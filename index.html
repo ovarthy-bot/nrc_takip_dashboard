@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>NRC Dashboard</title>
+
+    <!-- SheetJS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+
+        h1 {
+            margin-bottom: 10px;
+        }
+
+        input {
+            margin-bottom: 15px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        th, td {
+            border: 1px solid #ccc;
+            padding: 6px;
+            text-align: left;
+        }
+
+        th {
+            background: #f0f0f0;
+        }
+
+        tr:hover {
+            background: #f9f9f9;
+        }
+
+        #search {
+            width: 300px;
+            padding: 5px;
+        }
+    </style>
+</head>
+<body>
+
+<h1>NRC Dashboard</h1>
+
+<input type="file" id="fileInput" accept=".xlsx,.xls">
+
+<br>
+
+<input
+    type="text"
+    id="search"
+    placeholder="Ara (WO, Task Card, Status...)">
+
+<table id="table">
+    <thead></thead>
+    <tbody></tbody>
+</table>
+
+<script>
+
+let allData = [];
+
+// Excel yükleme
+document.getElementById("fileInput").addEventListener("change", handleFile);
+
+function handleFile(e) {
+
+    const file = e.target.files[0];
+    const reader = new FileReader();
+
+    reader.onload = function(event) {
+
+        const data = new Uint8Array(event.target.result);
+
+        const workbook = XLSX.read(data, { type: "array" });
+
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+
+        const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+
+        prepareData(json);
+    };
+
+    reader.readAsArrayBuffer(file);
+}
+
+// İstenen kolonları seç
+function prepareData(rows) {
+
+    const header = rows[0];
+
+    // 1,2,6,7,8,9,16,17 (index = -1)
+    const columns = [0,1,5,6,7,8,15,16];
+
+    const selectedHeader = columns.map(i => header[i]);
+
+    allData = rows.slice(1).map(row =>
+        columns.map(i => row[i] ?? "")
+    );
+
+    renderTable(selectedHeader, allData);
+}
+
+// Tabloyu çiz
+function renderTable(header, data) {
+
+    const thead = document.querySelector("thead");
+    const tbody = document.querySelector("tbody");
+
+    thead.innerHTML = "";
+    tbody.innerHTML = "";
+
+    // Başlık
+    const tr = document.createElement("tr");
+
+    header.forEach(h => {
+        const th = document.createElement("th");
+        th.textContent = h;
+        tr.appendChild(th);
+    });
+
+    thead.appendChild(tr);
+
+    // Satırlar
+    data.forEach(row => {
+
+        const tr = document.createElement("tr");
+
+        row.forEach(cell => {
+
+            const td = document.createElement("td");
+            td.textContent = cell;
+            tr.appendChild(td);
+
+        });
+
+        tbody.appendChild(tr);
+    });
+}
+
+// Arama / Filtre
+document.getElementById("search").addEventListener("input", function() {
+
+    const value = this.value.toLowerCase();
+
+    const filtered = allData.filter(row =>
+        row.some(cell =>
+            String(cell).toLowerCase().includes(value)
+        )
+    );
+
+    const header = document.querySelectorAll("th");
+
+    const headers = [...header].map(h => h.textContent);
+
+    renderTable(headers, filtered);
+});
+
+</script>
+
+</body>
+</html>
