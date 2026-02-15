@@ -7,104 +7,18 @@
     <title>Uçak Eşleştirme - NRC Dashboard</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
-    <style>
-        .mapping-container {
-            max-width: 800px;
-            margin: 2rem auto;
-            padding: 1rem;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-
-        .form-group {
-            display: flex;
-            gap: 1rem;
-            margin-bottom: 2rem;
-            align-items: flex-end;
-        }
-
-        .input-wrapper {
-            flex: 1;
-        }
-
-        .input-wrapper label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-weight: 500;
-        }
-
-        .input-wrapper input {
-            width: 100%;
-            padding: 0.5rem;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-        }
-
-        .table-wrapper {
-            margin-top: 1rem;
-        }
-
-        .back-link {
-            display: inline-block;
-            margin-bottom: 1rem;
-            text-decoration: none;
-            color: #333;
-            font-weight: 500;
-        }
-
-        .delete-btn {
-            background: #ff4d4f;
-            color: white;
-            border: none;
-            padding: 4px 8px;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-    </style>
 </head>
 
 <body>
     <header>
         <div class="header-content">
-            <h1>Uçak Eşleştirme Yönetimi</h1>
+            <h1>Uçak Eşleştirme</h1>
+            <a href="index.html" class="btn btn-secondary">← Geri Dön</a>
         </div>
     </header>
-
     <main>
-        <div class="mapping-container">
-            <a href="index.html" class="back-link">← Dashboard'a Dön</a>
-
-            <div class="form-group">
-                <div class="input-wrapper">
-                    <label for="woInput">WO Numarası</label>
-                    <input type="text" id="woInput" placeholder="Örn: 123456">
-                </div>
-                <div class="input-wrapper">
-                    <label for="aircraftInput">Uçak İsmi</label>
-                    <input type="text" id="aircraftInput" placeholder="Örn: TC-ABC">
-                </div>
-                <button id="addMappingBtn" class="btn btn-primary">Ekle / Güncelle</button>
-            </div>
-
-            <div class="table-wrapper">
-                <table id="mappingTable">
-                    <thead>
-                        <tr>
-                            <th>WO Numarası</th>
-                            <th>Uçak İsmi</th>
-                            <th>İşlem</th>
-                        </tr>
-                    </thead>
-                    <tbody id="mappingBody">
-                        <!-- Rows will be added here -->
-                    </tbody>
-                </table>
-            </div>
-        </div>
+        <p>Bu sayfa yapım aşamasındadır.</p>
     </main>
-
-    <script type="module" src="js/mapping.js"></script>
 </body>
 
 </html>
