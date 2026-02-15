@@ -1,77 +1,242 @@
-<!DOCTYPE html>
-<html lang="tr">
+import Storage from './storage.js';
+import UI from './ui.js';
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NRC Dashboard</title>
+const App = {
+    state: {
+        allData: [],
+        filteredData: [],
+        headers: ["WO", "Task Card", "Konu", "Ucak Tipi", "Tarih", "Bolge", "Durum", "Planlanan(MH)", "Gerceklesen(MH)", "Oran %", "Not"],
+        filters: {},
+        sort: {
+            colIndex: -1,
+            asc: true
+        },
+        pagination: {
+            page: 1,
+            pageSize: 100
+        }
+    },
 
-    <!-- Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    init: async function () {
+        this.bindEvents();
+        await this.loadData();
+    },
 
-    <!-- SheetJS -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    bindEvents: function () {
 
-    <!-- Custom CSS -->
-    <link rel="stylesheet" href="css/style.css">
-</head>
+        const debounce = (fn, delay) => {
+            let t;
+            return (...args) => {
+                clearTimeout(t);
+                t = setTimeout(() => fn.apply(this, args), delay);
+            };
+        };
 
-<body>
+        document.getElementById('fileInput')
+            .addEventListener('change', (e) => this.handleFile(e));
 
-    <header>
-        <div class="header-content">
-            <h1>NRC Dashboard</h1>
-            <div class="controls">
-                <label for="fileInput" class="btn btn-primary">
-                    <span class="icon">📂</span> Excel Yükle
-                </label>
-                <input type="file" id="fileInput" accept=".xlsx,.xls" hidden>
-                <button id="clearDataBtn" class="btn btn-danger" hidden>Verileri Temizle</button>
-            </div>
-        </div>
-        <div class="search-bar">
-            <input type="text" id="search" placeholder="Ara (WO, Task Card, Status...)">
-        </div>
-        <div id="progress-container" class="progress-container hidden">
-            <div class="progress-bar">
-                <div id="progress-fill" class="progress-fill"></div>
-            </div>
-            <span id="progress-text">İşleniyor...</span>
-        </div>
-    </header>
+        document.getElementById('search')
+            .addEventListener('input',
+                debounce((e) => this.handleSearch(e), 300)
+            );
 
-    <main id="app">
-        <div id="loading" class="hidden">Yükleniyor...</div>
-        <div id="empty-state" class="empty-state">
-            <p>Görüntülenecek veri yok. Lütfen bir Excel dosyası yükleyin.</p>
-        </div>
+        document.getElementById('clearDataBtn')
+            .addEventListener('click', () => this.clearData());
 
-        <!-- Data Container -->
-        <div id="data-container" class="data-container hidden">
-            <!-- Table View (Desktop) -->
-            <div class="table-wrapper">
-                <table id="main-table">
-                    <thead>
-                        <!-- Headers will be injected here -->
-                    </thead>
-                    <tbody>
-                        <!-- Rows will be injected here -->
-                    </tbody>
-                </table>
-            </div>
+        document.getElementById('nextPage')
+            ?.addEventListener('click', () => this.nextPage());
 
-            <!-- Card View (Mobile) -->
-            <div id="card-list" class="card-list">
-                <!-- Cards will be injected here -->
-            </div>
-        </div>
-    </main>
+        document.getElementById('prevPage')
+            ?.addEventListener('click', () => this.prevPage());
+    },
 
-    <!-- Custom JS -->
-    <!-- Custom JS -->
-    <script type="module" src="js/app.js"></script>
-</body>
+    loadData: async function () {
+        UI.toggleLoading(true);
+        const data = await Storage.fetchAll();
 
-</html>
+        this.state.allData = data || [];
+        this.state.filteredData = this.state.allData;
+        this.state.pagination.page = 1;
+
+        this.render();
+        UI.toggleLoading(false);
+    },
+
+    clearData: function () {
+        alert("Firestore üzerinden silme devre dışı.");
+    },
+
+    handleFile: function (e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        UI.toggleLoading(true);
+
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+            try {
+                const data = new Uint8Array(event.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+
+                await this.processData(rows);
+            } catch (err) {
+                console.error(err);
+                alert('Dosya okunamadı');
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    },
+
+    processData: async function (rows) {
+
+        if (!rows || rows.length < 2) return;
+
+        const columns = [0, 1, 5, 6, 12, 7, 8, 15, 16];
+        const existingMap = new Map();
+
+        this.state.allData.forEach(r => {
+            existingMap.set(r[0] + '_' + r[1], r);
+        });
+
+        const newData = [];
+
+        for (let i = 1; i < rows.length; i++) {
+
+            const row = rows[i];
+
+            const mapped = columns.map((colIdx, idx) => {
+                let cell = row[colIdx] ?? "";
+
+                if (idx === 4 && typeof cell === 'number') {
+                    cell = this.excelDateToJSDate(cell);
+                }
+
+                return cell;
+            });
+
+            let val1 = parseFloat(mapped[7]) || 0;
+            let val2 = parseFloat(mapped[8]) || 0;
+            let percentage = val1 !== 0 ? (val2 / val1) * 100 : 0;
+
+            mapped.push(percentage.toFixed(2));
+
+            const key = mapped[0] + '_' + mapped[1];
+            const existing = existingMap.get(key);
+            mapped.push(existing ? existing[10] || "" : "");
+
+            newData.push(mapped);
+        }
+
+        await Storage.saveBatch(newData);
+
+        // 🔥 Reload yerine direkt state güncelle
+        this.state.allData = newData;
+        this.state.filteredData = newData;
+        this.state.pagination.page = 1;
+
+        this.render();
+        UI.toggleLoading(false);
+        alert("Import tamamlandı");
+    },
+
+    excelDateToJSDate: function (serial) {
+        if (!serial || isNaN(serial)) return "";
+
+        const utc_days = Math.floor(serial - 25569);
+        const utc_value = utc_days * 86400;
+        const date_info = new Date(utc_value * 1000);
+
+        const day = String(date_info.getDate()).padStart(2, '0');
+        const month = String(date_info.getMonth() + 1).padStart(2, '0');
+        const year = date_info.getFullYear();
+
+        return `${day}.${month}.${year}`;
+    },
+
+    handleSearch: function (e) {
+        const query = e.target.value.toLowerCase();
+        this.filterData(query);
+    },
+
+    filterData: function (query) {
+
+        if (!query) {
+            this.state.filteredData = this.state.allData;
+        } else {
+            this.state.filteredData = this.state.allData.filter(row =>
+                row.some(cell =>
+                    String(cell).toLowerCase().includes(query)
+                )
+            );
+        }
+
+        this.state.pagination.page = 1;
+        this.render();
+    },
+
+    sortData: function (colIndex) {
+
+        if (this.state.sort.colIndex === colIndex) {
+            this.state.sort.asc = !this.state.sort.asc;
+        } else {
+            this.state.sort.colIndex = colIndex;
+            this.state.sort.asc = true;
+        }
+
+        const { asc } = this.state.sort;
+
+        this.state.filteredData.sort((a, b) => {
+
+            let valA = a[colIndex];
+            let valB = b[colIndex];
+
+            const numA = parseFloat(valA);
+            const numB = parseFloat(valB);
+
+            if (!isNaN(numA) && !isNaN(numB)) {
+                return asc ? numA - numB : numB - numA;
+            }
+
+            return asc
+                ? String(valA).localeCompare(String(valB))
+                : String(valB).localeCompare(String(valA));
+        });
+
+        this.render();
+    },
+
+    nextPage: function () {
+        const totalPages = Math.ceil(this.state.filteredData.length / this.state.pagination.pageSize);
+        if (this.state.pagination.page < totalPages) {
+            this.state.pagination.page++;
+            this.render();
+        }
+    },
+
+    prevPage: function () {
+        if (this.state.pagination.page > 1) {
+            this.state.pagination.page--;
+            this.render();
+        }
+    },
+
+    render: function () {
+
+        const { page, pageSize } = this.state.pagination;
+        const start = (page - 1) * pageSize;
+        const end = start + pageSize;
+
+        const pageData = this.state.filteredData.slice(start, end);
+
+        UI.showData(this.state.headers, pageData);
+    }
+};
+
+window.App = App;
+export default App;
+
+document.addEventListener('DOMContentLoaded', () => {
+    App.init();
+});
