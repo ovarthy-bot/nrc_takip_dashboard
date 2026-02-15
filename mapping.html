@@ -1,20 +1,110 @@
-
 <!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<title>WO - Uçak Eşleştirme</title>
-</head>
-<body>
-<h2>WO - Uçak Eşleştirme</h2>
-<table border="1" id="mapping-table">
-<thead>
-<tr><th>WO</th><th>Uçak İsmi</th></tr>
-</thead>
-<tbody id="mapping-body"></tbody>
-</table>
-<button onclick="saveMapping()">Kaydet</button>
+<html lang="tr">
 
-<script src="js/mapping.js"></script>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Uçak Eşleştirme - NRC Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .mapping-container {
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 1rem;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .form-group {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            align-items: flex-end;
+        }
+
+        .input-wrapper {
+            flex: 1;
+        }
+
+        .input-wrapper label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        .input-wrapper input {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .table-wrapper {
+            margin-top: 1rem;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 1rem;
+            text-decoration: none;
+            color: #333;
+            font-weight: 500;
+        }
+
+        .delete-btn {
+            background: #ff4d4f;
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <div class="header-content">
+            <h1>Uçak Eşleştirme Yönetimi</h1>
+        </div>
+    </header>
+
+    <main>
+        <div class="mapping-container">
+            <a href="index.html" class="back-link">← Dashboard'a Dön</a>
+
+            <div class="form-group">
+                <div class="input-wrapper">
+                    <label for="woInput">WO Numarası</label>
+                    <input type="text" id="woInput" placeholder="Örn: 123456">
+                </div>
+                <div class="input-wrapper">
+                    <label for="aircraftInput">Uçak İsmi</label>
+                    <input type="text" id="aircraftInput" placeholder="Örn: TC-ABC">
+                </div>
+                <button id="addMappingBtn" class="btn btn-primary">Ekle / Güncelle</button>
+            </div>
+
+            <div class="table-wrapper">
+                <table id="mappingTable">
+                    <thead>
+                        <tr>
+                            <th>WO Numarası</th>
+                            <th>Uçak İsmi</th>
+                            <th>İşlem</th>
+                        </tr>
+                    </thead>
+                    <tbody id="mappingBody">
+                        <!-- Rows will be added here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script type="module" src="js/mapping.js"></script>
 </body>
+
 </html>
