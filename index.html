@@ -69,7 +69,30 @@
         </div>
     </main>
 
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getFirestore } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBnA80pK9CTZmMezjIbQZnVa-vdXWNl8ho",
+            authDomain: "nrc-takip.firebaseapp.com",
+            databaseURL: "https://nrc-takip-default-rtdb.firebaseio.com",
+            projectId: "nrc-takip",
+            storageBucket: "nrc-takip.firebasestorage.app",
+            messagingSenderId: "844697253551",
+            appId: "1:844697253551:web:5c92aa497e4b63c674465a"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // Make db available globally
+        window.firestoreDB = db;
+    </script>
+
     <!-- Custom JS -->
+    <script src="js/firestore-utils.js"></script>
     <script src="js/storage.js"></script>
     <script src="js/ui.js"></script>
     <script src="js/app.js"></script>
