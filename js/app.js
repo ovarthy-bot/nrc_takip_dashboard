@@ -46,8 +46,14 @@ const App = {
             });
         });
 
-        // Pagination
-        // (Handled in UI.renderPagination callbacks, creating global access)
+        // Mobile Filters Toggle
+        const toggleBtn = document.getElementById('toggleobileFilters');
+        if (toggleBtn) {
+            toggleBtn.addEventListener('click', () => {
+                const filtersDiv = document.getElementById('mobile-filters');
+                filtersDiv.classList.toggle('hidden');
+            });
+        }
     },
 
     // Utility: Debounce
@@ -76,9 +82,6 @@ const App = {
         if (data && data.length > 0) {
             this.state.allData = data;
             this.state.headers = ["WO", "Task Card", "Konu", "Ucak Tipi", "Tarih", "Bolge", "Durum", "Planlanan(MH)", "Gerceklesenn(MH)", "Oran %", "Not"];
-
-            // Check for Department Column existence in logic?
-            // "Bolge" is index 5. We use this for tabs.
 
             this.state.filteredData = data;
             this.calculateStats();
@@ -151,18 +154,16 @@ const App = {
 
     processDataChunked: async function (rows) {
         if (!rows || rows.length < 2) {
-            alert('Dosya boş veya geçersiz format!');
+            alert(`Hata: Dosyada veri bulunamadı! (Satır sayısı: ${rows ? rows.length : 0})`);
             UI.toggleLoading(false);
             UI.toggleProgress(false);
             return;
         }
 
         const headerRow = rows[0];
-        // Validation: Check if critical columns exist
-        // Expected: WO(0), TaskCard(1), Status(6) at least?
-        // We rely on index. Simple check: length > 10?
-        if (rows[0].length < 10) {
-            alert('Hatalı Format: Eksik sütunlar. Lütfen doğru Excel dosyasını yükleyin.');
+        // Validation
+        if (headerRow.length < 10) {
+            alert(`Hatalı Format: Beklenen sütun sayısı en az 10, bulunan: ${headerRow.length}. Lütfen doğru Excel dosyasını yükleyin.`);
             UI.toggleLoading(false);
             UI.toggleProgress(false);
             return;
@@ -172,10 +173,12 @@ const App = {
 
         // 1. Prepare Data for Batch Save
         const existingMap = new Map();
-        this.state.allData.forEach(row => {
-            const key = `${row[0]}_${row[1]}`;
-            existingMap.set(key, row);
-        });
+        if (this.state.allData && this.state.allData.length > 0) {
+            this.state.allData.forEach(row => {
+                const key = `${row[0]}_${row[1]}`;
+                existingMap.set(key, row);
+            });
+        }
 
         const rowsToSave = [];
 
@@ -231,12 +234,19 @@ const App = {
         // Optimized Update: Don't fetchAgain. Use rowsToSave.
         this.state.allData = rowsToSave;
         this.state.filteredData = rowsToSave;
+
+        // Ensure headers are set
+        this.state.headers = ["WO", "Task Card", "Konu", "Ucak Tipi", "Tarih", "Bolge", "Durum", "Planlanan(MH)", "Gerceklesenn(MH)", "Oran %", "Not"];
+
         this.calculateStats();
+
+        // Turn off loading BEFORE render to prevent UI race conditions
+        UI.toggleLoading(false);
+        UI.toggleProgress(false);
+
         this.render();
 
-        alert('İşlem tamamlandı!');
-        UI.toggleProgress(false);
-        UI.toggleLoading(false);
+        alert(`İşlem tamamlandı! Toplam ${rowsToSave.length} kayıt işlendi.`);
     },
 
     updateNote: async function (row, note) {
@@ -281,7 +291,7 @@ const App = {
             if (this.state.filters.global) {
                 const globalMatch = row.some((cell, i) => {
                     // Check visible data + Note (Index 10)
-                    // Also check mapped Aircraft Name?
+                    // Also check mapped Aircraft Name
                     if (i === 0) { // Check WO and Aircraft Name
                         const plane = this.state.aircraftMap[cell] || "";
                         if (String(plane).toLowerCase().includes(this.state.filters.global)) return true;
@@ -295,14 +305,7 @@ const App = {
             if (this.state.filters.dept) {
                 const rowDept = String(row[5]).toUpperCase();
                 const filterDept = this.state.filters.dept;
-                // Strict equality or contains? Usually distinct values.
-                if (rowDept !== filterDept) return false;
-            }
-
-            // Other filters
-            for (const [colIdx, filterVal] of Object.entries(this.state.filters)) {
-                if (['global', 'dept'].includes(colIdx) || filterVal === "") continue;
-                if (String(row[colIdx]) !== String(filterVal)) return false;
+                if (!rowDept.includes(filterDept)) return false;
             }
 
             return true;
@@ -326,10 +329,6 @@ const App = {
         }
 
         const { colIndex: sortIdx, asc } = this.state.sort;
-
-        // Optimization: Sort entire dataset or just filtered?
-        // We must sort filtered data.
-        // Pagination applies AFTER sort.
 
         this.state.filteredData.sort((a, b) => {
             let valA = a[sortIdx];
@@ -376,7 +375,6 @@ const App = {
     },
 
     render: function () {
-        // Pagination Logic
         const { currentPage, pageSize } = this.state.pagination;
         const start = (currentPage - 1) * pageSize;
         const end = start + pageSize;
