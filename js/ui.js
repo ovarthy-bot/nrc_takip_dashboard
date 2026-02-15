@@ -113,15 +113,32 @@ const UI = {
         this.elements.tableBody.innerHTML = '';
         data.forEach(row => {
             const tr = document.createElement('tr');
-            row.forEach((cell, i) => {
+
+            const wo = row[0];
+            const plane = window.App.state.aircraftMap[wo] || "-";
+
+            const visualRow = [...row];
+            visualRow.splice(1, 0, plane); // Insert Plane at 1
+
+            visualRow.forEach((cell, i) => {
                 const td = document.createElement('td');
-                td.textContent = cell;
 
-                // Wrap text columns: 2, 4
-                if (i === 2 || i === 4) td.classList.add('wrap-text');
+                // Logic for Desktop Notes (Last Column, Visual Index 11)
+                // "Not" is originally index 10. +1 for Plane = 11.
+                // Or just check if header is "Not".
+                if (visualHeaders[i] === "Not") {
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.value = cell || '';
+                    input.className = 'table-note-input';
+                    input.onchange = (e) => window.App.updateNote(row, e.target.value);
+                    td.appendChild(input);
+                } else {
+                    td.textContent = cell;
+                }
 
-                // Tight cell columns
-                if ([0, 1, 3, 6, 7, 8].includes(i)) td.classList.add('tight-cell');
+                if (i === 3 || i === 5) td.classList.add('wrap-text');
+                if ([0, 1, 2, 4, 7, 8, 9].includes(i)) td.classList.add('tight-cell');
 
                 tr.appendChild(td);
             });
@@ -135,21 +152,28 @@ const UI = {
             const card = document.createElement('div');
             card.className = 'card';
 
+            const wo = row[0];
+            const plane = window.App.state.aircraftMap[wo] || "-";
+
             const cardHeader = document.createElement('div');
             cardHeader.className = 'card-header';
 
-            // Use 2nd column (Task Card) as Title if available, else 1st
             const title = document.createElement('div');
             title.className = 'card-title';
-            title.textContent = row[1] || row[0]; // Task Card or WO
+            title.textContent = row[1] || row[0];
 
             const status = document.createElement('div');
             status.className = 'card-status';
-            status.textContent = row[6] || ''; // Status
+            status.textContent = row[6] || '';
 
             cardHeader.appendChild(title);
             cardHeader.appendChild(status);
             card.appendChild(cardHeader);
+
+            const planeDiv = document.createElement('div');
+            planeDiv.className = 'card-row';
+            planeDiv.innerHTML = '<span class="card-label">Uçak:</span><span class="card-value">' + plane + '</span>';
+            card.appendChild(planeDiv);
 
             // Create rows for other data
             headers.forEach((h, i) => {
@@ -181,19 +205,11 @@ const UI = {
 
             const noteInput = document.createElement('textarea');
             noteInput.placeholder = 'Not ekle...';
-            // Assuming the note is stored in the last column (index 9, after percentage)
-            // But wait, the previous code pushed percentage at the end.
-            // We need to check where the note is stored.
-            // Let's assume the note is the LAST element in the row array.
-            // Current structure: [0..8 (original), 9 (percentage)]
-            // So note would be index 10.
-            // We'll let App.js handle the column index logic, but here we just grab the last element if headers include "Not"
 
-            // Check if "Not" is in headers
             const noteIndex = headers.indexOf('Not');
             if (noteIndex !== -1) {
                 noteInput.value = row[noteIndex] || '';
-                noteInput.onchange = (e) => App.updateNote(row, e.target.value);
+                noteInput.onchange = (e) => window.App.updateNote(row, e.target.value);
             }
 
             noteDiv.appendChild(noteLabel);
