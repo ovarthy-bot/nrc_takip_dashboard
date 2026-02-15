@@ -1,35 +1,28 @@
+// Firebase Config - Kullanıcı tarafından doldurulmalı
+const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT.firebaseapp.com",
+    databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
+    projectId: "YOUR_PROJECT",
+    storageBucket: "YOUR_PROJECT.appspot.com",
+    messagingSenderId: "ID",
+    appId: "APP_ID"
+};
+
+if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
 const Storage = {
-    KEY: 'nrc_dashboard_data',
-
-    save: function (data) {
-        try {
-            localStorage.setItem(this.KEY, JSON.stringify(data));
-            console.log('Data saved to localStorage');
-            return true;
-        } catch (e) {
-            console.error('Error saving data:', e);
-            return false;
-        }
+    saveData: async (data) => {
+        localStorage.setItem('nrc_data', JSON.stringify(data));
+        // Firebase Sync
+        try { await db.ref('dashboard_data').set(data); } catch(e) { console.error("Firebase Hatası:", e); }
     },
-
-    load: function () {
-        try {
-            const data = localStorage.getItem(this.KEY);
-            return data ? JSON.parse(data) : null;
-        } catch (e) {
-            console.error('Error loading data:', e);
-            return null;
-        }
+    loadData: () => JSON.parse(localStorage.getItem('nrc_data')),
+    
+    saveMappings: (mappings) => {
+        localStorage.setItem('nrc_mappings', JSON.stringify(mappings));
+        db.ref('aircraft_mappings').set(mappings);
     },
-
-    clear: function () {
-        try {
-            localStorage.removeItem(this.KEY);
-            console.log('Data cleared from localStorage');
-            return true;
-        } catch (e) {
-            console.error('Error clearing data:', e);
-            return false;
-        }
-    }
+    loadMappings: () => JSON.parse(localStorage.getItem('nrc_mappings')) || {}
 };
