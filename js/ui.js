@@ -1,5 +1,3 @@
-import App from './app.js';
-
 const UI = {
     elements: {
         tableHead: document.querySelector('#main-table thead'),
@@ -8,39 +6,21 @@ const UI = {
         loading: document.getElementById('loading'),
         emptyState: document.getElementById('empty-state'),
         dataContainer: document.getElementById('data-container'),
+        clearBtn: document.getElementById('clearDataBtn'), // Might be removed in new HTML? Check index.html
         progressContainer: document.getElementById('progress-container'),
         progressFill: document.getElementById('progress-fill'),
         progressText: document.getElementById('progress-text'),
+        // New Elements
         statsBar: document.getElementById('stats-bar'),
         statOpen: document.getElementById('stat-open'),
         statClosed: document.getElementById('stat-closed'),
         statDefer: document.getElementById('stat-defer'),
         importDate: document.getElementById('import-date'),
         paginationControls: document.getElementById('pagination-controls'),
-        pageInfo: document.getElementById('page-info'),
         prevPageBtn: document.getElementById('prev-page'),
         nextPageBtn: document.getElementById('next-page'),
-        deptFilters: document.getElementById('dept-filters-container')
-    },
-
-    init: function () {
-        this.bindPaginationEvents();
-        this.bindFilterEvents();
-    },
-
-    bindPaginationEvents: function () {
-        this.elements.prevPageBtn.addEventListener('click', () => App.changePage(-1));
-        this.elements.nextPageBtn.addEventListener('click', () => App.changePage(1));
-    },
-
-    bindFilterEvents: function () {
-        this.elements.deptFilters.querySelectorAll('.filter-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const dept = e.target.dataset.dept;
-                e.target.classList.toggle('active');
-                App.toggleDepartmentFilter(dept);
-            });
-        });
+        pageInfo: document.getElementById('page-info'),
+        deptFilters: document.querySelectorAll('.filter-btn')
     },
 
     toggleProgress: function (show) {
@@ -61,49 +41,48 @@ const UI = {
             this.elements.loading.classList.remove('hidden');
             this.elements.dataContainer.classList.add('hidden');
             this.elements.emptyState.classList.add('hidden');
-            this.elements.statsBar.classList.add('hidden');
-            this.elements.paginationControls.classList.add('hidden');
         } else {
             this.elements.loading.classList.add('hidden');
         }
+    },
+
+    showData: function (headers, data, page = 1, totalPages = 1) {
+        if (!data || data.length === 0) {
+            this.elements.dataContainer.classList.add('hidden');
+            this.elements.emptyState.classList.remove('hidden');
+            this.elements.statsBar.classList.add('hidden');
+            return;
+        }
+
+        this.elements.emptyState.classList.add('hidden');
+        this.elements.dataContainer.classList.remove('hidden');
+        this.elements.statsBar.classList.remove('hidden');
+
+        this.renderTable(headers, data); // renders current page data
+        this.renderCards(headers, data);
+        this.updatePagination(page, totalPages);
     },
 
     updateStats: function (stats) {
         this.elements.statOpen.textContent = stats.open;
         this.elements.statClosed.textContent = stats.closed;
         this.elements.statDefer.textContent = stats.defer;
-        this.elements.importDate.textContent = stats.date || '-';
-        this.elements.statsBar.classList.remove('hidden');
+        this.elements.importDate.textContent = stats.date;
     },
 
-    updatePagination: function (current, total) {
-        this.elements.pageInfo.textContent = `Sayfa ${current} / ${total}`;
-        this.elements.prevPageBtn.disabled = current <= 1;
-        this.elements.nextPageBtn.disabled = current >= total;
-        this.elements.paginationControls.classList.remove('hidden');
-    },
-
-    showData: function (headers, data, pageData, showPagination = true) {
-        if (!data || data.length === 0) {
-            this.elements.dataContainer.classList.add('hidden');
-            this.elements.emptyState.classList.remove('hidden');
-            this.elements.statsBar.classList.add('hidden');
+    updatePagination: function (page, totalPages) {
+        if (totalPages <= 1) {
             this.elements.paginationControls.classList.add('hidden');
             return;
         }
-
-        this.elements.emptyState.classList.add('hidden');
-        this.elements.dataContainer.classList.remove('hidden');
-
-        // Render headers once (or update if needed)
-        this.renderTableHeaders(headers);
-
-        // Render rows for CURRENT PAGE
-        this.renderTableBody(pageData);
-        this.renderCards(headers, pageData);
+        this.elements.paginationControls.classList.remove('hidden');
+        this.elements.pageInfo.textContent = `Sayfa ${page} / ${totalPages}`;
+        this.elements.prevPageBtn.disabled = page === 1;
+        this.elements.nextPageBtn.disabled = page === totalPages;
     },
 
-    renderTableHeaders: function (headers) {
+    renderTable: function (headers, data) {
+        // Clear Headers
         this.elements.tableHead.innerHTML = '';
         const trHead = document.createElement('tr');
 
@@ -118,6 +97,7 @@ const UI = {
             }
 
             // Specific columns tight
+            // 0 (index 0), 1 (index 1), 3 (index 3), 6 (index 6), 7 (index 7), 8 (index 8)
             if ([0, 1, 3, 6, 7, 8].includes(index)) {
                 th.classList.add('tight-cell');
             }
@@ -126,46 +106,14 @@ const UI = {
         });
         this.elements.tableHead.appendChild(trHead);
 
-        // Filter Row
-        const trFilter = document.createElement('tr');
-        headers.forEach((h, index) => {
-            const th = document.createElement('th');
-            // Filterable columns: 0, 3, 5, 6, and potentially "Uçak İsmi" (if index 0 is used for it)
-            // Let's make it generic: anything with text content could be filterable.
-            // But strict list: 
-            // If we insert "Uçak İsmi" at index 0, everything shifts.
-            // We'll rely on App logic to tell us which columns to filter, or just try to support all useful ones.
+        // Filter Row - Removed as per new design request (using separate filter UI? or keeping it?)
+        // The new HTML has a "filters-section" with department filters and a global search.
+        // It does NOT explicitly show individual column filters in the table header in the HTML structure comments.
+        // However, user just gave me the HTML skeleton. The table might still need column filters if desired.
+        // But for now, let's stick to the skeleton which has specific filters outside.
+        // I will keep the column rendering simple.
 
-            // Let's support dropdowns for Status (index ?), and Aircraft (index ?)
-            const uniqueValues = App.getUniqueValues(index);
-            if (uniqueValues.length > 0 && uniqueValues.length < 50) { // Only show dropdown if reasonable number of options
-                const select = document.createElement('select');
-                select.innerHTML = '<option value="">Tümü</option>';
-
-                uniqueValues.sort().forEach(val => {
-                    if (val) {
-                        const opt = document.createElement('option');
-                        opt.value = val;
-                        opt.textContent = val;
-                        select.appendChild(opt);
-                    }
-                });
-
-                if (App.state.filters[index]) {
-                    select.value = App.state.filters[index];
-                }
-
-                select.onchange = (e) => App.filterData(index, e.target.value);
-                select.onclick = (e) => e.stopPropagation(); // Prevent sort
-                th.appendChild(select);
-            }
-
-            trFilter.appendChild(th);
-        });
-        this.elements.tableHead.appendChild(trFilter);
-    },
-
-    renderTableBody: function (data) {
+        // Clear Body
         this.elements.tableBody.innerHTML = '';
         data.forEach(row => {
             const tr = document.createElement('tr');
@@ -173,9 +121,11 @@ const UI = {
                 const td = document.createElement('td');
                 td.textContent = cell;
 
-                // Wrap text columns: 2, 4 (Original indices, might shift!)
-                // Better heuristic: if length > 50 wrap?
-                if (String(cell).length > 30) td.classList.add('wrap-text');
+                // Wrap text columns: 2, 4
+                if (i === 2 || i === 4) td.classList.add('wrap-text');
+
+                // Tight cell columns
+                if ([0, 1, 3, 6, 7, 8].includes(i)) td.classList.add('tight-cell');
 
                 tr.appendChild(td);
             });
@@ -192,29 +142,24 @@ const UI = {
             const cardHeader = document.createElement('div');
             cardHeader.className = 'card-header';
 
-            // Heuristic for Title: WO (0) or Task (1)
-            // If we inserted Aircraft Name at 0, then WO is 1?
-            // Let's just take the first two columns.
+            // Use 2nd column (Task Card) as Title if available, else 1st
             const title = document.createElement('div');
             title.className = 'card-title';
-            title.textContent = `${row[0]} - ${row[1]}`;
+            title.textContent = row[1] || row[0]; // Task Card or WO
 
-            const cardHeaderRight = document.createElement('div');
-            // Find Status column (usually contains "OPEN", "CLOSED")
-            const statusIdx = row.findIndex(c => ['OPEN', 'CLOSED', 'DEFER'].includes(String(c)));
-            if (statusIdx !== -1) {
-                const status = document.createElement('div');
-                status.className = 'card-status';
-                status.textContent = row[statusIdx];
-                cardHeaderRight.appendChild(status);
-            }
+            const status = document.createElement('div');
+            status.className = 'card-status';
+            status.textContent = row[6] || ''; // Status
 
             cardHeader.appendChild(title);
-            cardHeader.appendChild(cardHeaderRight);
+            cardHeader.appendChild(status);
             card.appendChild(cardHeader);
 
             // Create rows for other data
             headers.forEach((h, i) => {
+                // Skip if it's the title we just showed
+                if (i === 1) return;
+
                 const rowDiv = document.createElement('div');
                 rowDiv.className = 'card-row';
 
@@ -231,39 +176,6 @@ const UI = {
                 card.appendChild(rowDiv);
             });
 
-            // Department Section
-            const deptDiv = document.createElement('div');
-            deptDiv.className = 'card-dept';
-            const deptLabel = document.createElement('div');
-            deptLabel.className = 'card-label';
-            deptLabel.textContent = 'Bölüm:';
-            deptDiv.appendChild(deptLabel);
-
-            const deptContainer = document.createElement('div');
-            deptContainer.className = 'dept-buttons';
-
-            const departments = ["Cabin", "Ortak Cabin", "AVI", "MEC", "STR", "OTHER"];
-            // Get current depts for this row
-            const deptIdx = headers.indexOf("Bölüm");
-            const currentDepts = (deptIdx !== -1 && row[deptIdx]) ? String(row[deptIdx]).split(',') : [];
-
-            departments.forEach(dept => {
-                const btn = document.createElement('button');
-                btn.className = 'filter-btn btn-xs'; // Reuse filter-btn styles
-                btn.textContent = dept;
-                if (currentDepts.includes(dept)) {
-                    btn.classList.add('active');
-                }
-
-                btn.onclick = (e) => {
-                    e.target.classList.toggle('active');
-                    App.updateRowDepartment(row, dept);
-                };
-                deptContainer.appendChild(btn);
-            });
-            deptDiv.appendChild(deptContainer);
-            card.appendChild(deptDiv);
-
             // Note Section
             const noteDiv = document.createElement('div');
             noteDiv.className = 'card-note';
@@ -274,7 +186,7 @@ const UI = {
             const noteInput = document.createElement('textarea');
             noteInput.placeholder = 'Not ekle...';
 
-            // Check for "Not" column
+            // Note is likely the last column.
             const noteIndex = headers.indexOf('Not');
             if (noteIndex !== -1) {
                 noteInput.value = row[noteIndex] || '';
@@ -289,5 +201,3 @@ const UI = {
         });
     }
 };
-
-export default UI;
