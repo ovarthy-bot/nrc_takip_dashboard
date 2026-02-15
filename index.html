@@ -1,221 +1,77 @@
-import Storage from './storage.js';
-import UI from './ui.js';
+<!DOCTYPE html>
+<html lang="tr">
 
-const App = {
-    state: {
-        allData: [],
-        filteredData: [],
-        headers: ["WO", "Task Card", "Konu", "Ucak Tipi", "Tarih", "Bolge", "Durum", "Planlanan(MH)", "Gerceklesenn(MH)", "Oran %", "Not"],
-        filters: {},
-        sort: {
-            colIndex: -1,
-            asc: true
-        }
-    },
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NRC Dashboard</title>
 
-    init: async function () {
-        console.log('App initialized (Firebase)');
-        this.bindEvents();
-        await this.loadData();
-    },
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 
-    bindEvents: function () {
-        document.getElementById('fileInput').addEventListener('change', (e) => this.handleFile(e));
-        document.getElementById('search').addEventListener('input', (e) => this.handleSearch(e));
-        document.getElementById('clearDataBtn').addEventListener('click', () => this.clearData());
-    },
+    <!-- SheetJS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
-    loadData: async function () {
-        UI.toggleLoading(true);
-        try {
-            const data = await Storage.fetchAll();
-            this.state.allData = data || [];
-            this.state.filteredData = [...this.state.allData];
-            this.render();
-        } catch (error) {
-            console.error("Veri yükleme hatası:", error);
-        } finally {
-            UI.toggleLoading(false);
-        }
-    },
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
 
-    handleFile: function (e) {
-        const file = e.target.files[0];
-        if (!file) return;
+<body>
 
-        UI.toggleLoading(true);
-        UI.toggleProgress(true);
-        UI.updateProgress(0, 'Dosya okunuyor...');
+    <header>
+        <div class="header-content">
+            <h1>NRC Dashboard</h1>
+            <div class="controls">
+                <label for="fileInput" class="btn btn-primary">
+                    <span class="icon">📂</span> Excel Yükle
+                </label>
+                <input type="file" id="fileInput" accept=".xlsx,.xls" hidden>
+                <button id="clearDataBtn" class="btn btn-danger" hidden>Verileri Temizle</button>
+            </div>
+        </div>
+        <div class="search-bar">
+            <input type="text" id="search" placeholder="Ara (WO, Task Card, Status...)">
+        </div>
+        <div id="progress-container" class="progress-container hidden">
+            <div class="progress-bar">
+                <div id="progress-fill" class="progress-fill"></div>
+            </div>
+            <span id="progress-text">İşleniyor...</span>
+        </div>
+    </header>
 
-        const reader = new FileReader();
-        reader.onload = async (event) => {
-            try {
-                const data = new Uint8Array(event.target.result);
-                // Worker kullanmıyorsak 'array' tipi en hızlısıdır
-                const workbook = XLSX.read(data, { 
-                    type: 'array',
-                    cellDates: false, // Manuel dönüştürme daha kontrollüdür
-                    dense: true // Bellek kullanımını azaltır
-                });
-                
-                const sheet = workbook.Sheets[workbook.SheetNames[0]];
-                // raw: true hız kazandırır
-                const json = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true });
-                
-                await this.processDataInChunks(json);
-            } catch (err) {
-                console.error(err);
-                alert('Dosya işlenirken hata oluştu!');
-                UI.toggleLoading(false);
-                UI.toggleProgress(false);
-            }
-        };
-        reader.readAsArrayBuffer(file);
-    },
+    <main id="app">
+        <div id="loading" class="hidden">Yükleniyor...</div>
+        <div id="empty-state" class="empty-state">
+            <p>Görüntülenecek veri yok. Lütfen bir Excel dosyası yükleyin.</p>
+        </div>
 
-    // ASIL İYİLEŞTİRME BURADA: Veriyi parçalara bölerek işler
-    processDataInChunks: async function (rows) {
-        if (!rows || rows.length < 2) {
-            alert('Dosya geçersiz!');
-            return;
-        }
+        <!-- Data Container -->
+        <div id="data-container" class="data-container hidden">
+            <!-- Table View (Desktop) -->
+            <div class="table-wrapper">
+                <table id="main-table">
+                    <thead>
+                        <!-- Headers will be injected here -->
+                    </thead>
+                    <tbody>
+                        <!-- Rows will be injected here -->
+                    </tbody>
+                </table>
+            </div>
 
-        const columns = [0, 1, 5, 6, 12, 7, 8, 15, 16];
-        const existingMap = new Map();
-        this.state.allData.forEach(row => {
-            existingMap.set(`${row[0]}_${row[1]}`, row[10] || "");
-        });
+            <!-- Card View (Mobile) -->
+            <div id="card-list" class="card-list">
+                <!-- Cards will be injected here -->
+            </div>
+        </div>
+    </main>
 
-        const totalRows = rows.length - 1;
-        const chunkSize = 500; // Her seferinde 500 satır işle
-        const rowsToSave = [];
+    <!-- Custom JS -->
+    <!-- Custom JS -->
+    <script type="module" src="js/app.js"></script>
+</body>
 
-        for (let i = 1; i < rows.length; i += chunkSize) {
-            const chunkEnd = Math.min(i + chunkSize, rows.length);
-            
-            for (let j = i; j < chunkEnd; j++) {
-                const row = rows[j];
-                
-                // Mapping işlemini optimize et
-                const mappedRow = new Array(columns.length);
-                for (let k = 0; k < columns.length; k++) {
-                    let cell = row[columns[k]] ?? "";
-                    if (k === 4 && typeof cell === 'number') {
-                        cell = this.excelDateToJSDate(cell);
-                    }
-                    mappedRow[k] = cell;
-                }
-
-                // Oran Hesaplama
-                const p1 = parseFloat(mappedRow[5]) || 0; // Planlanan
-                const p2 = parseFloat(mappedRow[6]) || 0; // Gerçekleşen
-                const percentage = p1 !== 0 ? ((p2 / p1) * 100).toFixed(2) : "0.00";
-                
-                // Satırı tamamla
-                mappedRow[9] = percentage; // Oran %
-                const key = `${mappedRow[0]}_${mappedRow[1]}`;
-                mappedRow[10] = existingMap.get(key) || ""; // Mevcut Notu koru
-                
-                rowsToSave.push(mappedRow);
-            }
-
-            // Arayüzün donmaması için küçük bir nefes al (UI Thread release)
-            const progress = Math.round((i / totalRows) * 50); 
-            UI.updateProgress(progress, `İşleniyor: %${progress * 2}`);
-            await new Promise(resolve => setTimeout(resolve, 0));
-        }
-
-        UI.updateProgress(60, 'Veritabanına gönderiliyor...');
-        
-        // Storage.saveBatch'in kendi içinde chunking yapması gerekir (Firestore limiti 500'dür)
-        try {
-            await Storage.saveBatch(rowsToSave);
-            UI.updateProgress(100, 'Tamamlandı');
-            await this.loadData();
-            alert('5000+ veri başarıyla senkronize edildi.');
-        } catch (err) {
-            console.error("Kayıt hatası:", err);
-            alert("Veritabanına yazılırken hata oluştu.");
-        } finally {
-            UI.toggleProgress(false);
-            UI.toggleLoading(false);
-        }
-    },
-
-    excelDateToJSDate: function (serial) {
-        if (!serial || isNaN(serial) || serial < 20000) return serial;
-        const date = new Date(Math.round((serial - 25569) * 86400 * 1000));
-        return date.toLocaleDateString('tr-TR'); // Daha hızlı ve standart
-    },
-
-    // Arama ve Filtreleme Performans İyileştirmesi
-    applyFilters: function () {
-        const { global } = this.state.filters;
-        const gQuery = global ? global.toLowerCase() : null;
-
-        this.state.filteredData = this.state.allData.filter(row => {
-            // Global arama performansı için "some" yerine basit döngü
-            if (gQuery) {
-                let match = false;
-                for (let i = 0; i < row.length; i++) {
-                    if (String(row[i]).toLowerCase().includes(gQuery)) {
-                        match = true;
-                        break;
-                    }
-                }
-                if (!match) return false;
-            }
-
-            // Sütun filtreleri
-            for (const [colIdx, filterVal] of Object.entries(this.state.filters)) {
-                if (colIdx === 'global' || filterVal === "") continue;
-                if (String(row[colIdx]) !== String(filterVal)) return false;
-            }
-            return true;
-        });
-
-        this.render();
-    },
-
-    render: function () {
-        // UI.showData'nın içinde virtual scroll yoksa 5000 satır DOM'u yavaşlatır.
-        // Eğer UI.js size aitse, sadece ilk 100 satırı render etmeyi düşünebilirsiniz.
-        UI.showData(this.state.headers, this.state.filteredData);
-    },
-
-    // Diğer metodlar aynı kalabilir...
-    handleSearch: function (e) {
-        this.state.filters.global = e.target.value;
-        this.applyFilters();
-    },
-    
-    sortData: function (colIndex, toggle = true) {
-        // Mevcut sıralama mantığınız kalabilir, ancak büyük veride 
-        // LocaleCompare yerine basit karşılaştırma daha hızlıdır.
-        if (toggle) {
-            if (this.state.sort.colIndex === colIndex) {
-                this.state.sort.asc = !this.state.sort.asc;
-            } else {
-                this.state.sort.colIndex = colIndex;
-                this.state.sort.asc = true;
-            }
-        }
-        
-        const asc = this.state.sort.asc;
-        this.state.filteredData.sort((a, b) => {
-            const valA = a[colIndex];
-            const valB = b[colIndex];
-            if (valA === valB) return 0;
-            return asc ? (valA > valB ? 1 : -1) : (valA < valB ? 1 : -1);
-        });
-        
-        this.render();
-    }
-};
-
-window.App = App;
-export default App;
-
-document.addEventListener('DOMContentLoaded', () => {
-    App.init();
-});
+</html>
