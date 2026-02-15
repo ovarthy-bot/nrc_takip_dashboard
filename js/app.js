@@ -1,8 +1,11 @@
+import Storage from './storage.js';
+import UI from './ui.js';
+
 const App = {
     state: {
         allData: [],
         filteredData: [],
-        headers: [],
+        headers: [], // Headers are now fixed or derived from connection, but we keep structure
         filters: {},
         sort: {
             colIndex: -1,
@@ -10,10 +13,10 @@ const App = {
         }
     },
 
-    init: function () {
-        console.log('App initialized');
+    init: async function () {
+        console.log('App initialized (Firebase)');
         this.bindEvents();
-        this.loadData();
+        await this.loadData();
     },
 
     bindEvents: function () {
@@ -22,47 +25,37 @@ const App = {
         document.getElementById('clearDataBtn').addEventListener('click', () => this.clearData());
     },
 
-    loadData: function () {
-        const saved = Storage.load();
-        if (saved) {
-            this.state.allData = saved.data;
-            this.state.headers = saved.headers;
+    loadData: async function () {
+        UI.toggleLoading(true);
+        const data = await Storage.fetchAll();
 
-            // Migration: Ensure "Not" column exists
-            if (!this.state.headers.includes("Not")) {
-                this.state.headers.push("Not");
-                // Add empty note to all rows
-                this.state.allData.forEach(row => {
-                    // Ensure row handles the new column index (10)
-                    // Current length should be 10 (0..9). 
-                    // processData pushes 9 elements (0..8) + 1 percentage = 10 elements.
-                    // So we push 1 more.
-                    row.push("");
-                });
-                this.saveData(); // Save migrated data
-                console.log("Data migrated: Added 'Not' column.");
-            }
+        if (data && data.length > 0) {
+            this.state.allData = data;
 
-            this.state.filteredData = this.state.allData; // Initial view
+            // Reconstruct Headers (Assumption: all rows share same structure)
+            // If data is empty, we wait for import. 
+            // We hardcode headers to be safe or pick from first row if valid.
+            // Based on previous logic, we know the columns.
+            this.state.headers = ["WO", "Task Card", "Konu", "Ucak Tipi", "Tarih", "Bolge", "Durum", "Planlanan(MH)", "Gerceklesenn(MH)", "Oran %", "Not"];
+
+            this.state.filteredData = data;
+            this.render();
+        } else {
+            this.state.allData = [];
+            this.state.filteredData = [];
             this.render();
         }
+        UI.toggleLoading(false);
     },
 
-    saveData: function () {
-        Storage.save({
-            headers: this.state.headers,
-            data: this.state.allData
-        });
+    saveData: async function () {
+        // With Firestore, we save individually or in batches during import/update.
+        // Global "Save everything" is not efficient or needed here.
+        console.log("Auto-save is handled by specific actions (Import/Update)");
     },
 
     clearData: function () {
-        if (confirm('Verileri temizlemek istediğinize emin misiniz?')) {
-            Storage.clear();
-            this.state.allData = [];
-            this.state.filteredData = [];
-            this.state.headers = [];
-            this.render();
-        }
+        alert("Firestore üzerinden veri silme işlemi şu an devre dışı (Admin yetkisi gerektirir).");
     },
 
     handleFile: function (e) {
@@ -95,7 +88,7 @@ const App = {
         }, 100);
     },
 
-    processDataChunked: function (rows) {
+    processDataChunked: async function (rows) {
         if (!rows || rows.length < 2) {
             alert('Dosya boş veya geçersiz format!');
             UI.toggleLoading(false);
@@ -106,123 +99,90 @@ const App = {
         const headerRow = rows[0];
         const columns = [0, 1, 5, 6, 12, 7, 8, 15, 16]; // Indices to keep
 
-        // 1. Prepare Headers (once)
-        // If we already have headers (from previous load), keep them. 
-        // But we should ensure "Not" column exists.
+        // 1. Prepare Data for Batch Save
+        // We will process all rows locally to format them, then send to Storage.saveBatch
+        const totalRows = rows.length - 1;
 
-        let headers = this.state.headers;
-        if (headers.length === 0) {
-            headers = columns.map(i => headerRow[i] || "");
-            headers.push("Oran %");
-            headers.push("Not"); // New Note Column
-        }
+        // This array will hold the NEW or UPDATED objects
+        // In Firestore logic, we just send the row data.
+        // The merging logic happens in Storage.saveBatch (using merge: true)? 
+        // Wait, current Storage.saveBatch uses set({row: row}, {merge:true}). 
+        // NOTE: set with merge: true merges fields. 
+        // If we send `row: [a,b,c]`, it REPLACES the `row` field in the document.
+        // It does NOT merge the array contents.
+        // So we MUST preserve the Note column LOCALLY before sending if we want to keep it.
+        // OR we need to fetch existing data first?
+        // We already have `this.state.allData` loaded! 
 
-        // 2. Index Existing Data for Merging
-        // Map: "WO_TaskCard" -> Row Object (or Array)
-        // We use a Map to store references to existing rows.
+        // Let's use the local state to merge Notes, then send the FULL row to Firestore.
+
         const existingMap = new Map();
-
-        // Key generation helper
-        const getKey = (row) => `${row[0]}_${row[1]}`; // WO + TaskCard
-
         this.state.allData.forEach(row => {
-            const key = getKey(row);
+            const key = `${row[0]}_${row[1]}`;
             existingMap.set(key, row);
         });
 
-        const totalRows = rows.length - 1;
-        let currentIndex = 1;
-        const CHUNK_SIZE = 500; // Process 500 rows at a time
+        const rowsToSave = [];
 
-        const processChunk = () => {
-            const chunkEnd = Math.min(currentIndex + CHUNK_SIZE, rows.length);
+        // Chunk processing loop for UI responsiveness (still useful for local processing)
+        // But for Firestore, we'll collect everything then batch send.
 
-            for (let i = currentIndex; i < chunkEnd; i++) {
-                const row = rows[i];
-                // Map to our structure
-                const mappedRow = columns.map((colIdx, idx) => {
-                    let cell = row[colIdx];
-                    if (cell === undefined || cell === null) cell = "";
+        let processedCount = 0;
 
-                    // Date formatting for visual column 4 (originally index 5 in columns array? No, index 4 in result array is index 12 in source? Wait.)
-                    // columns = [0, 1, 5, 6, 12, ...] -> index 4 is 12?
-                    // 0->0, 1->1, 2->5, 3->6, 4->12. Yes. 
-                    // Wait, original code said: "if (i === 4 && typeof cell === 'number')"
-                    // Let's verify mapping:
-                    // 0: WO
-                    // 1: Task Card
-                    // 2: ?
-                    // 3: ?
-                    // 4: ? (Date?)
-                    if (idx === 4 && typeof cell === 'number') {
-                        cell = this.excelDateToJSDate(cell);
-                    }
-                    return cell;
-                });
-
-                // Calculate Percentage
-                let val1 = parseFloat(mappedRow[7]); // Index 7 in mapped (source 15)
-                let val2 = parseFloat(mappedRow[8]); // Index 8 in mapped (source 16)
-
-                if (isNaN(val1)) val1 = 0;
-                if (isNaN(val2)) val2 = 0;
-
-                let percentage = 0;
-                if (val1 !== 0) {
-                    percentage = (val2 / val1) * 100;
+        // We do this in a non-async loop for speed, then async save
+        for (let i = 1; i < rows.length; i++) {
+            const row = rows[i];
+            const mappedRow = columns.map((colIdx, idx) => {
+                let cell = row[colIdx];
+                if (cell === undefined || cell === null) cell = "";
+                if (idx === 4 && typeof cell === 'number') {
+                    cell = this.excelDateToJSDate(cell);
                 }
-                mappedRow.push(percentage.toFixed(2)); // Index 9
+                return cell;
+            });
 
-                // Merge Logic
-                const key = getKey(mappedRow);
-                const existingRow = existingMap.get(key);
+            // Percentage
+            let val1 = parseFloat(mappedRow[7]);
+            let val2 = parseFloat(mappedRow[8]);
 
-                if (existingRow) {
-                    // Update existing row data BUT preserve Note
-                    // Expected structure: [...data, percentage, note]
-                    // existingRow might differ if we update columns, but assuming consistent schema.
-                    const existingNote = existingRow[10] || ""; // Index 10 is Note
-                    mappedRow.push(existingNote);
+            if (isNaN(val1)) val1 = 0;
+            if (isNaN(val2)) val2 = 0;
 
-                    // Replace in Map (effectively updating the dataset definition)
-                    // However, allData is an Array. We need to reconstruct it or update it in place.
-                    // Since we are iterating *new* file, we might have rows in *old* data that are NOT in *new* file.
-                    // The requirement says: "Import edilen veri daha önce uygulama içerisinde bulunamadıysa en sona bu veriler eklensin."
-                    // And "değişen verilerin eskisi güncellensin."
-                    // So we implicitly keep old rows that are NOT in the new file? 
-                    // Or do we only keep the union? usually "import" implies adding/updating, not replacing whole dataset (unless it was a clean state).
-                    // But if we want to update *existing* rows, we should modify the object ref if possible, or build a new list.
-
-                    // Strategy:
-                    // 1. We have `existingMap` with all current data.
-                    // 2. We process new rows.
-                    // 3. If match -> Update the entry in `existingMap` (preserving note).
-                    // 4. If new -> Add to `existingMap` (or a separate list of new items).
-                    // 5. Finally, flatten Map values to Array.
-
-                    existingMap.set(key, mappedRow);
-                } else {
-                    // New Row
-                    mappedRow.push(""); // Empty Note
-                    existingMap.set(key, mappedRow);
-                }
+            let percentage = 0;
+            if (val1 !== 0) {
+                percentage = (val2 / val1) * 100;
             }
+            mappedRow.push(percentage.toFixed(2));
 
-            currentIndex = chunkEnd;
+            // Merge Logic
+            const key = `${mappedRow[0]}_${mappedRow[1]}`;
+            const existingRow = existingMap.get(key);
 
-            // Update UI
-            const percent = Math.round(((currentIndex - 1) / totalRows) * 100);
-            UI.updateProgress(percent, `%${percent} İşlendi`);
-
-            if (currentIndex < rows.length) {
-                requestAnimationFrame(processChunk);
+            if (existingRow) {
+                const existingNote = existingRow[10] || ""; // Index 10 is Note
+                mappedRow.push(existingNote);
             } else {
-                // Finished
-                this.finalizeProcess(existingMap, headers);
+                mappedRow.push(""); // Empty Note
             }
-        };
 
-        processChunk();
+            rowsToSave.push(mappedRow);
+        }
+
+        // Now we have rowsToSave. Send to Firestore.
+        // We can do this with progress updates.
+
+        UI.updateProgress(50, 'Veriler hazırlanıyor...');
+
+        await Storage.saveBatch(rowsToSave); // This implementation should handle chunking internally or we do it here.
+        // My Storage implementation handles batching.
+
+        UI.updateProgress(100, 'Tamamlandı');
+
+        // Reload fresh data
+        await this.loadData();
+
+        alert('İşlem tamamlandı!');
+        UI.toggleProgress(false);
     },
 
     finalizeProcess: function (dataMap, headers) {
@@ -242,18 +202,14 @@ const App = {
         alert('İşlem tamamlandı!');
     },
 
-    updateNote: function (row, note) {
-        // row is a reference to the array in allData
-        // We find the note column index.
-        const noteIndex = 10; // Fixed based on our logic (9 cols + 1 pct + 1 note)
-        // Ensure row has space
-        while (row.length <= noteIndex) {
-            row.push("");
-        }
+    updateNote: async function (row, note) {
+        // Update local state first for responsiveness
+        const noteIndex = 10;
+        while (row.length <= noteIndex) row.push("");
         row[noteIndex] = note;
-        this.saveData();
-        // No need to re-render entire table if just updating memory, 
-        // but if search depends on it, we might need to if we were filtering by note content (not yet implemented in search though).
+
+        // Send to Firestore
+        await Storage.updateRow(row);
     },
 
     excelDateToJSDate: function (serial) {
@@ -362,6 +318,10 @@ const App = {
         UI.showData(this.state.headers, this.state.filteredData);
     }
 };
+
+// Export and Attach to Window
+window.App = App;
+export default App;
 
 // Start App
 document.addEventListener('DOMContentLoaded', () => {
