@@ -38,28 +38,34 @@ const Storage = {
                 lastUpdated: new Date().toISOString()
             });
 
-            // We won't save ALL rows every time if we can avoid it, but for "Save" functionality after import:
-            // Doing 5000 writes is costly and slow. 
-            // Ideally we only write CHANGED rows. 
-            // But let's start with a Batch approach if possible or just individual writes for changed items.
-            // For this implementation, we will assume the `App` handles difference detection or we just write them.
-            // Actually, `App.js` processes chunked. We should probably let App.js call `saveRow` or `saveBatch`.
+            console.log(`Starting batch save for ${dataRows.length} rows...`);
 
-            // To simplify migration from localStorage structure, let's stick to the interface:
-            // save(data) -> where data has {headers, data: []}
-            // But this is too big for one doc.
+            // Batch writes (Limit 500 per batch)
+            const CHUNK_SIZE = 500;
+            for (let i = 0; i < dataRows.length; i += CHUNK_SIZE) {
+                const chunk = dataRows.slice(i, i + CHUNK_SIZE);
+                const batch = writeBatch(db);
 
-            // let's try to bundle them in chunks of 500 rows? 
-            // No, Firestore query is easier if documents are handled properly.
-            // But read/write costs... 
-            // Let's go with: 'records' collection.
+                chunk.forEach(row => {
+                    // ID Generation: WO (index 1) + TaskCard (index 2)
+                    // Sanitize ID to remove slashes or special chars that might break paths
+                    const wo = String(row[1] || "").replace(/\//g, '-');
+                    const task = String(row[2] || "").replace(/\//g, '-');
+                    const id = `${wo}_${task}`;
 
-            console.warn("Storage.saveData: Creating batch writes for " + dataRows.length + " rows.");
+                    if (wo && task) {
+                        const rowRef = doc(db, 'records', id);
+                        batch.set(rowRef, { data: row });
+                    }
+                });
 
-            // TODO: Implement batching in App.js to avoid freezing UI. 
-            // Here we just provide a method to save a single row or list.
+                await batch.commit();
+                console.log(`Saved batch ${i} to ${i + chunk.length}`);
+            }
+
+            return true;
         } catch (e) {
-            console.error("Error saving metadata:", e);
+            console.error("Error saving data:", e);
             throw e;
         }
     },
