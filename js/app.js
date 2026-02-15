@@ -1,369 +1,112 @@
 const App = {
     state: {
-        allData: [],
-        filteredData: [],
-        headers: [],
-        filters: {},
-        sort: {
-            colIndex: -1,
-            asc: true
-        }
+        allData: [], filteredData: [], mappings: {},
+        currentPage: 1, pageSize: 50,
+        searchQuery: '', activeView: 'dashboard',
+        lastImport: null
     },
 
-    init: function () {
-        console.log('App initialized');
-        this.bindEvents();
-        this.loadData();
-    },
-
-    bindEvents: function () {
-        document.getElementById('fileInput').addEventListener('change', (e) => this.handleFile(e));
-        document.getElementById('search').addEventListener('input', (e) => this.handleSearch(e));
-        document.getElementById('clearDataBtn').addEventListener('click', () => this.clearData());
-    },
-
-    loadData: function () {
-        const saved = Storage.load();
-        if (saved) {
+    init: function() {
+        this.state.mappings = Storage.loadMappings();
+        const saved = Storage.loadData();
+        if(saved) {
             this.state.allData = saved.data;
-            this.state.headers = saved.headers;
-
-            // Migration: Ensure "Not" column exists
-            if (!this.state.headers.includes("Not")) {
-                this.state.headers.push("Not");
-                // Add empty note to all rows
-                this.state.allData.forEach(row => {
-                    // Ensure row handles the new column index (10)
-                    // Current length should be 10 (0..9). 
-                    // processData pushes 9 elements (0..8) + 1 percentage = 10 elements.
-                    // So we push 1 more.
-                    row.push("");
-                });
-                this.saveData(); // Save migrated data
-                console.log("Data migrated: Added 'Not' column.");
-            }
-
-            this.state.filteredData = this.state.allData; // Initial view
-            this.render();
+            this.state.lastImport = saved.timestamp;
+            this.applyFilters();
         }
+        this.bindEvents();
+        UI.renderMappings(this.state.mappings);
     },
 
-    saveData: function () {
-        Storage.save({
-            headers: this.state.headers,
-            data: this.state.allData
-        });
+    bindEvents: function() {
+        // Debounce Search
+        const searchInput = document.getElementById('search');
+        searchInput.addEventListener('input', this.debounce(() => {
+            this.state.searchQuery = searchInput.value.toLowerCase();
+            this.state.currentPage = 1;
+            this.applyFilters();
+        }, 300));
+
+        document.getElementById('fileInput').addEventListener('change', (e) => this.handleFile(e));
+        
+        // Mobile Filter Events
+        document.getElementById('filter-aircraft').addEventListener('change', () => this.applyFilters());
+        document.getElementById('filter-dept').addEventListener('change', () => this.applyFilters());
     },
 
-    clearData: function () {
-        if (confirm('Verileri temizlemek istediğinize emin misiniz?')) {
-            Storage.clear();
-            this.state.allData = [];
-            this.state.filteredData = [];
-            this.state.headers = [];
-            this.render();
-        }
-    },
-
-    handleFile: function (e) {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        UI.toggleLoading(true);
-        UI.toggleProgress(true);
-        UI.updateProgress(0, 'Dosya okunuyor...');
-
-        // Short timeout to allow UI to render
-        setTimeout(() => {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                try {
-                    const data = new Uint8Array(event.target.result);
-                    const workbook = XLSX.read(data, { type: 'array' });
-                    const sheet = workbook.Sheets[workbook.SheetNames[0]];
-                    const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-
-                    this.processDataChunked(json);
-                } catch (err) {
-                    console.error(err);
-                    alert('Dosya okunurken hata oluştu!');
-                    UI.toggleLoading(false);
-                    UI.toggleProgress(false);
-                }
-            };
-            reader.readAsArrayBuffer(file);
-        }, 100);
-    },
-
-    processDataChunked: function (rows) {
-        if (!rows || rows.length < 2) {
-            alert('Dosya boş veya geçersiz format!');
-            UI.toggleLoading(false);
-            UI.toggleProgress(false);
-            return;
-        }
-
-        const headerRow = rows[0];
-        const columns = [0, 1, 5, 6, 12, 7, 8, 15, 16]; // Indices to keep
-
-        // 1. Prepare Headers (once)
-        // If we already have headers (from previous load), keep them. 
-        // But we should ensure "Not" column exists.
-
-        let headers = this.state.headers;
-        if (headers.length === 0) {
-            headers = columns.map(i => headerRow[i] || "");
-            headers.push("Oran %");
-            headers.push("Not"); // New Note Column
-        }
-
-        // 2. Index Existing Data for Merging
-        // Map: "WO_TaskCard" -> Row Object (or Array)
-        // We use a Map to store references to existing rows.
-        const existingMap = new Map();
-
-        // Key generation helper
-        const getKey = (row) => `${row[0]}_${row[1]}`; // WO + TaskCard
-
-        this.state.allData.forEach(row => {
-            const key = getKey(row);
-            existingMap.set(key, row);
-        });
-
-        const totalRows = rows.length - 1;
-        let currentIndex = 1;
-        const CHUNK_SIZE = 500; // Process 500 rows at a time
-
-        const processChunk = () => {
-            const chunkEnd = Math.min(currentIndex + CHUNK_SIZE, rows.length);
-
-            for (let i = currentIndex; i < chunkEnd; i++) {
-                const row = rows[i];
-                // Map to our structure
-                const mappedRow = columns.map((colIdx, idx) => {
-                    let cell = row[colIdx];
-                    if (cell === undefined || cell === null) cell = "";
-
-                    // Date formatting for visual column 4 (originally index 5 in columns array? No, index 4 in result array is index 12 in source? Wait.)
-                    // columns = [0, 1, 5, 6, 12, ...] -> index 4 is 12?
-                    // 0->0, 1->1, 2->5, 3->6, 4->12. Yes. 
-                    // Wait, original code said: "if (i === 4 && typeof cell === 'number')"
-                    // Let's verify mapping:
-                    // 0: WO
-                    // 1: Task Card
-                    // 2: ?
-                    // 3: ?
-                    // 4: ? (Date?)
-                    if (idx === 4 && typeof cell === 'number') {
-                        cell = this.excelDateToJSDate(cell);
-                    }
-                    return cell;
-                });
-
-                // Calculate Percentage
-                let val1 = parseFloat(mappedRow[7]); // Index 7 in mapped (source 15)
-                let val2 = parseFloat(mappedRow[8]); // Index 8 in mapped (source 16)
-
-                if (isNaN(val1)) val1 = 0;
-                if (isNaN(val2)) val2 = 0;
-
-                let percentage = 0;
-                if (val1 !== 0) {
-                    percentage = (val2 / val1) * 100;
-                }
-                mappedRow.push(percentage.toFixed(2)); // Index 9
-
-                // Merge Logic
-                const key = getKey(mappedRow);
-                const existingRow = existingMap.get(key);
-
-                if (existingRow) {
-                    // Update existing row data BUT preserve Note
-                    // Expected structure: [...data, percentage, note]
-                    // existingRow might differ if we update columns, but assuming consistent schema.
-                    const existingNote = existingRow[10] || ""; // Index 10 is Note
-                    mappedRow.push(existingNote);
-
-                    // Replace in Map (effectively updating the dataset definition)
-                    // However, allData is an Array. We need to reconstruct it or update it in place.
-                    // Since we are iterating *new* file, we might have rows in *old* data that are NOT in *new* file.
-                    // The requirement says: "Import edilen veri daha önce uygulama içerisinde bulunamadıysa en sona bu veriler eklensin."
-                    // And "değişen verilerin eskisi güncellensin."
-                    // So we implicitly keep old rows that are NOT in the new file? 
-                    // Or do we only keep the union? usually "import" implies adding/updating, not replacing whole dataset (unless it was a clean state).
-                    // But if we want to update *existing* rows, we should modify the object ref if possible, or build a new list.
-
-                    // Strategy:
-                    // 1. We have `existingMap` with all current data.
-                    // 2. We process new rows.
-                    // 3. If match -> Update the entry in `existingMap` (preserving note).
-                    // 4. If new -> Add to `existingMap` (or a separate list of new items).
-                    // 5. Finally, flatten Map values to Array.
-
-                    existingMap.set(key, mappedRow);
-                } else {
-                    // New Row
-                    mappedRow.push(""); // Empty Note
-                    existingMap.set(key, mappedRow);
-                }
-            }
-
-            currentIndex = chunkEnd;
-
-            // Update UI
-            const percent = Math.round(((currentIndex - 1) / totalRows) * 100);
-            UI.updateProgress(percent, `%${percent} İşlendi`);
-
-            if (currentIndex < rows.length) {
-                requestAnimationFrame(processChunk);
-            } else {
-                // Finished
-                this.finalizeProcess(existingMap, headers);
-            }
+    debounce: (func, delay) => {
+        let timeout;
+        return (...args) => {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func.apply(this, args), delay);
         };
-
-        processChunk();
     },
 
-    finalizeProcess: function (dataMap, headers) {
-        // Convert Map values back to Array
-        const finalData = Array.from(dataMap.values());
+    handleFile: function(e) {
+        const file = e.target.files[0];
+        if(!file) return;
 
-        this.state.headers = headers;
-        this.state.allData = finalData;
-        this.state.filteredData = finalData; // Reset filter on new import? Or re-apply?
-        // Let's reset filter for now to show all data (or just the updated set).
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+            const data = new Uint8Array(evt.target.result);
+            const workbook = XLSX.read(data, {type: 'array'});
+            const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {header: 1});
+            
+            // Güvenlik: Yanlış dosya kontrolü
+            if(!json[0].includes("WO") && !json[0].includes("Work Order")) {
+                alert("Hatalı Dosya Formtı! İşlem durduruldu.");
+                return;
+            }
 
-        this.saveData();
-        this.render();
-
-        UI.toggleLoading(false);
-        UI.toggleProgress(false);
-        alert('İşlem tamamlandı!');
+            this.processData(json);
+        };
+        reader.readAsArrayBuffer(file);
     },
 
-    updateNote: function (row, note) {
-        // row is a reference to the array in allData
-        // We find the note column index.
-        const noteIndex = 10; // Fixed based on our logic (9 cols + 1 pct + 1 note)
-        // Ensure row has space
-        while (row.length <= noteIndex) {
-            row.push("");
-        }
-        row[noteIndex] = note;
-        this.saveData();
-        // No need to re-render entire table if just updating memory, 
-        // but if search depends on it, we might need to if we were filtering by note content (not yet implemented in search though).
-    },
+    processData: function(rows) {
+        const processed = rows.slice(1).map(row => {
+            // VLOOKUP mantığı: WO row[0]'da ise
+            const wo = String(row[0]);
+            const aircraft = this.state.mappings[wo] || "Bilinmiyor";
+            return [aircraft, ...row, "OTHER"]; // Uçak İsmi + Veri + Başlangıç Bölümü
+        });
 
-    excelDateToJSDate: function (serial) {
-        if (!serial || isNaN(serial) || serial < 20000) return serial;
-        const utc_days = Math.floor(serial - 25569);
-        const utc_value = utc_days * 86400;
-        const date_info = new Date(utc_value * 1000);
-        const day = String(date_info.getDate()).padStart(2, '0');
-        const month = String(date_info.getMonth() + 1).padStart(2, '0');
-        const year = date_info.getFullYear();
-        return `${day}.${month}.${year}`;
-    },
-
-    handleSearch: function (e) {
-        const query = e.target.value.toLowerCase();
-        this.filterData('global', query);
-    },
-
-    filterData: function (columnIndex, value) {
-        if (columnIndex === 'global') {
-            this.state.filters.global = value;
-        } else {
-            this.state.filters[columnIndex] = value;
-        }
+        this.state.allData = processed;
+        this.state.lastImport = new Date().toLocaleString('tr-TR');
+        Storage.saveData({data: processed, timestamp: this.state.lastImport});
         this.applyFilters();
     },
 
-    applyFilters: function () {
+    applyFilters: function() {
+        const acFilter = document.getElementById('filter-aircraft').value;
+        const deptFilter = document.getElementById('filter-dept').value;
+
         this.state.filteredData = this.state.allData.filter(row => {
-            // Global Search
-            if (this.state.filters.global) {
-                const globalMatch = row.some(cell =>
-                    String(cell).toLowerCase().includes(this.state.filters.global)
-                );
-                if (!globalMatch) return false;
-            }
-
-            // Column Filters
-            for (const [colIdx, filterVal] of Object.entries(this.state.filters)) {
-                if (colIdx === 'global' || filterVal === "") continue;
-                if (String(row[colIdx]) !== String(filterVal)) return false;
-            }
-
-            return true;
+            const matchesSearch = row.some(cell => String(cell).toLowerCase().includes(this.state.searchQuery));
+            const matchesAC = acFilter === "" || row[0] === acFilter;
+            const matchesDept = deptFilter === "" || row[row.length - 1] === deptFilter;
+            return matchesSearch && matchesAC && matchesDept;
         });
 
-        // Re-apply sort if active
-        if (this.state.sort.colIndex !== -1) {
-            this.sortData(this.state.sort.colIndex, false); // false = don't toggle, just sort
-        } else {
-            this.render();
-        }
+        UI.render(this.state.filteredData);
+        UI.updateStats(this.state.filteredData);
     },
 
-    sortData: function (colIndex, toggle = true) {
-        if (toggle) {
-            if (this.state.sort.colIndex === colIndex) {
-                this.state.sort.asc = !this.state.sort.asc;
-            } else {
-                this.state.sort.colIndex = colIndex;
-                this.state.sort.asc = true;
-            }
-        }
-
-        const { colIndex: sortIdx, asc } = this.state.sort;
-
-        this.state.filteredData.sort((a, b) => {
-            let valA = a[sortIdx];
-            let valB = b[sortIdx];
-
-            // Specific Date Sort for Index 4 (DD.MM.YYYY)
-            if (sortIdx === 4) {
-                const parseDate = (d) => {
-                    if (!d) return 0;
-                    // Check if it's already a string date DD.MM.YYYY
-                    if (typeof d === 'string' && d.includes('.')) {
-                        const p = d.split('.');
-                        return new Date(p[2], p[1] - 1, p[0]).getTime();
-                    }
-                    return 0;
-                };
-                return asc ? parseDate(valA) - parseDate(valB) : parseDate(valB) - parseDate(valA);
-            }
-
-            // Numeric Check
-            const numA = parseFloat(valA);
-            const numB = parseFloat(valB);
-
-            if (!isNaN(numA) && !isNaN(numB)) {
-                return asc ? numA - numB : numB - numA;
-            }
-
-            // String Sort
-            const strA = String(valA).toLowerCase();
-            const strB = String(valB).toLowerCase();
-
-            if (strA < strB) return asc ? -1 : 1;
-            if (strA > strB) return asc ? 1 : -1;
-            return 0;
-        });
-
-        this.render();
+    addMapping: function() {
+        const wo = document.getElementById('map-wo').value;
+        const ac = document.getElementById('map-ac').value;
+        if(!wo || !ac) return;
+        this.state.mappings[wo] = ac;
+        Storage.saveMappings(this.state.mappings);
+        UI.renderMappings(this.state.mappings);
+        alert("Eşleşme kaydedildi. Mevcut verileri güncellemek için tekrar Excel yükleyin.");
     },
 
-    render: function () {
-        UI.showData(this.state.headers, this.state.filteredData);
+    switchView: function(view) {
+        document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
+        document.getElementById(`view-${view}`).classList.remove('hidden');
+        document.querySelectorAll('.btn-tab').forEach(btn => btn.classList.remove('active'));
     }
 };
 
-// Start App
-document.addEventListener('DOMContentLoaded', () => {
-    App.init();
-});
+App.init();
