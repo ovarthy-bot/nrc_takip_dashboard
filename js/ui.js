@@ -6,21 +6,11 @@ const UI = {
         loading: document.getElementById('loading'),
         emptyState: document.getElementById('empty-state'),
         dataContainer: document.getElementById('data-container'),
-        clearBtn: document.getElementById('clearDataBtn'), // Might be removed in new HTML? Check index.html
+        dataContainer: document.getElementById('data-container'),
+        clearBtn: document.getElementById('clearDataBtn'),
         progressContainer: document.getElementById('progress-container'),
         progressFill: document.getElementById('progress-fill'),
-        progressText: document.getElementById('progress-text'),
-        // New Elements
-        statsBar: document.getElementById('stats-bar'),
-        statOpen: document.getElementById('stat-open'),
-        statClosed: document.getElementById('stat-closed'),
-        statDefer: document.getElementById('stat-defer'),
-        importDate: document.getElementById('import-date'),
-        paginationControls: document.getElementById('pagination-controls'),
-        prevPageBtn: document.getElementById('prev-page'),
-        nextPageBtn: document.getElementById('next-page'),
-        pageInfo: document.getElementById('page-info'),
-        deptFilters: document.querySelectorAll('.filter-btn')
+        progressText: document.getElementById('progress-text')
     },
 
     toggleProgress: function (show) {
@@ -46,39 +36,20 @@ const UI = {
         }
     },
 
-    showData: function (headers, data, page = 1, totalPages = 1) {
+    showData: function (headers, data) {
         if (!data || data.length === 0) {
             this.elements.dataContainer.classList.add('hidden');
             this.elements.emptyState.classList.remove('hidden');
-            this.elements.statsBar.classList.add('hidden');
+            this.elements.clearBtn.hidden = true;
             return;
         }
 
         this.elements.emptyState.classList.add('hidden');
         this.elements.dataContainer.classList.remove('hidden');
-        this.elements.statsBar.classList.remove('hidden');
+        this.elements.clearBtn.hidden = false;
 
-        this.renderTable(headers, data); // renders current page data
+        this.renderTable(headers, data);
         this.renderCards(headers, data);
-        this.updatePagination(page, totalPages);
-    },
-
-    updateStats: function (stats) {
-        this.elements.statOpen.textContent = stats.open;
-        this.elements.statClosed.textContent = stats.closed;
-        this.elements.statDefer.textContent = stats.defer;
-        this.elements.importDate.textContent = stats.date;
-    },
-
-    updatePagination: function (page, totalPages) {
-        if (totalPages <= 1) {
-            this.elements.paginationControls.classList.add('hidden');
-            return;
-        }
-        this.elements.paginationControls.classList.remove('hidden');
-        this.elements.pageInfo.textContent = `Sayfa ${page} / ${totalPages}`;
-        this.elements.prevPageBtn.disabled = page === 1;
-        this.elements.nextPageBtn.disabled = page === totalPages;
     },
 
     renderTable: function (headers, data) {
@@ -106,12 +77,37 @@ const UI = {
         });
         this.elements.tableHead.appendChild(trHead);
 
-        // Filter Row - Removed as per new design request (using separate filter UI? or keeping it?)
-        // The new HTML has a "filters-section" with department filters and a global search.
-        // It does NOT explicitly show individual column filters in the table header in the HTML structure comments.
-        // However, user just gave me the HTML skeleton. The table might still need column filters if desired.
-        // But for now, let's stick to the skeleton which has specific filters outside.
-        // I will keep the column rendering simple.
+        // Filter Row
+        const trFilter = document.createElement('tr');
+        headers.forEach((h, index) => {
+            const th = document.createElement('th');
+            // Filterable columns: 0, 3, 5, 6
+            if ([0, 3, 5, 6].includes(index)) {
+                const select = document.createElement('select');
+                select.innerHTML = '<option value="">Tümü</option>';
+
+                // Get unique values
+                const unique = [...new Set(App.state.allData.map(row => row[index]))].sort();
+                unique.forEach(val => {
+                    if (val) {
+                        const opt = document.createElement('option');
+                        opt.value = val;
+                        opt.textContent = val;
+                        select.appendChild(opt);
+                    }
+                });
+
+                // Set current filter value
+                if (App.state.filters[index]) {
+                    select.value = App.state.filters[index];
+                }
+
+                select.onchange = (e) => App.filterData(index, e.target.value);
+                th.appendChild(select);
+            }
+            trFilter.appendChild(th);
+        });
+        this.elements.tableHead.appendChild(trFilter);
 
         // Clear Body
         this.elements.tableBody.innerHTML = '';
@@ -185,8 +181,15 @@ const UI = {
 
             const noteInput = document.createElement('textarea');
             noteInput.placeholder = 'Not ekle...';
+            // Assuming the note is stored in the last column (index 9, after percentage)
+            // But wait, the previous code pushed percentage at the end.
+            // We need to check where the note is stored.
+            // Let's assume the note is the LAST element in the row array.
+            // Current structure: [0..8 (original), 9 (percentage)]
+            // So note would be index 10.
+            // We'll let App.js handle the column index logic, but here we just grab the last element if headers include "Not"
 
-            // Note is likely the last column.
+            // Check if "Not" is in headers
             const noteIndex = headers.indexOf('Not');
             if (noteIndex !== -1) {
                 noteInput.value = row[noteIndex] || '';
