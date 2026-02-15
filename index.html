@@ -28,9 +28,20 @@
                     <span class="icon">📂</span> Excel Yükle
                 </label>
                 <input type="file" id="fileInput" accept=".xlsx,.xls" hidden>
-                <button id="clearDataBtn" class="btn btn-danger" hidden>Verileri Temizle</button>
+                <button id="aircraftMapBtn" class="btn btn-secondary">✈️ Uçak Eşle</button>
             </div>
         </div>
+
+        <!-- Stats and Meta -->
+        <div class="stats-bar">
+            <div id="last-import-time" class="meta-info">Son Import: -</div>
+            <div class="stats-counts">
+                <span class="badge badge-open">OPEN: <b id="stat-open">0</b></span>
+                <span class="badge badge-closed">CLOSED: <b id="stat-closed">0</b></span>
+                <span class="badge badge-defer">DEFER: <b id="stat-defer">0</b></span>
+            </div>
+        </div>
+
         <div class="search-bar">
             <input type="text" id="search" placeholder="Ara (WO, Task Card, Status...)">
         </div>
@@ -44,8 +55,26 @@
 
     <main id="app">
         <div id="loading" class="hidden">Yükleniyor...</div>
-        <div id="empty-state" class="empty-state">
-            <p>Görüntülenecek veri yok. Lütfen bir Excel dosyası yükleyin.</p>
+        <p>Görüntülenecek veri yok. Lütfen bir Excel dosyası yükleyin.</p>
+        </div>
+
+        <!-- Department Tabs -->
+        <div id="dept-tabs" class="dept-tabs hidden">
+            <button class="tab-btn active" data-dept="">Tümü</button>
+            <button class="tab-btn" data-dept="CABIN">Cabin</button>
+            <button class="tab-btn" data-dept="ORTAK CABIN">Ortak Cabin</button>
+            <button class="tab-btn" data-dept="AVI">AVI</button>
+            <button class="tab-btn" data-dept="MEC">MEC</button>
+            <button class="tab-btn" data-dept="STR">STR</button>
+            <button class="tab-btn" data-dept="OTHER">OTHER</button>
+        </div>
+
+        <!-- Mobile Filters (Collapsible) -->
+        <div class="mobile-filters-toggle md-hidden">
+            <button id="toggleobileFilters" class="btn btn-sm">Filtrele</button>
+        </div>
+        <div id="mobile-filters" class="mobile-filters hidden">
+            <!-- Will be populated via JS -->
         </div>
 
         <!-- Data Container -->
@@ -66,8 +95,34 @@
             <div id="card-list" class="card-list">
                 <!-- Cards will be injected here -->
             </div>
+
+            <!-- Pagination -->
+            <div class="pagination-controls">
+                <button id="prevPage" class="btn btn-sm">Önceki</button>
+                <span id="pageInfo">Sayfa 1 / 1</span>
+                <button id="nextPage" class="btn btn-sm">Sonraki</button>
+            </div>
         </div>
     </main>
+
+    <!-- Aircraft Map Modal -->
+    <div id="aircraftModal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h2>Uçak Eşleştirme</h2>
+            <div class="modal-body">
+                <div class="input-group">
+                    <input type="text" id="map-wo" placeholder="WO Numarası">
+                    <input type="text" id="map-plane" placeholder="Uçak İsmi">
+                    <button id="save-map-btn" class="btn btn-primary">Kaydet</button>
+                </div>
+                <div class="map-list">
+                    <h3>Kayıtlı Eşleşmeler</h3>
+                    <ul id="aircraft-map-list"></ul>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Custom JS -->
     <!-- Custom JS -->
