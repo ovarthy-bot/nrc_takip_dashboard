@@ -20,43 +20,44 @@
 
 <body>
 
-<!-- Added Header Info -->
-<div id="top-bar" style="padding:10px;">
-  <div id="import-info"></div>
-  <div id="stats-bar" style="margin-top:5px;">
-    <span id="open-count" style="color:red;font-weight:bold;"></span> |
-    <span id="closed-count" style="color:green;font-weight:bold;"></span> |
-    <span id="defer-count" style="font-weight:bold;"></span>
-  </div>
-  <div id="mobile-filters" style="margin-top:10px;">
-    <input type="text" id="filter-aircraft" placeholder="Uçak ismi filtre">
-    <select id="filter-section">
-      <option value="">Bölüm Seç</option>
-      <option>Cabin</option>
-      <option>Ortak Cabin</option>
-      <option>AVI</option>
-      <option>MEC</option>
-      <option>STR</option>
-      <option>OTHER</option>
-    </select>
-  </div>
-</div>
-
-
     <header>
         <div class="header-content">
             <h1>NRC Dashboard</h1>
-            <div class="controls">
-                <label for="fileInput" class="btn btn-primary">
-                    <span class="icon">📂</span> Excel Yükle
-                </label>
-                <input type="file" id="fileInput" accept=".xlsx,.xls" hidden>
-                <button id="clearDataBtn" class="btn btn-danger" hidden></button>
+            <div class="header-right">
+                <a href="mapping.html" class="btn btn-secondary">✈️ Uçak Eşleştirme</a>
+                <div class="controls">
+                    <label for="fileInput" class="btn btn-primary">
+                        <span class="icon">📂</span> Excel Yükle
+                    </label>
+                    <input type="file" id="fileInput" accept=".xlsx,.xls" hidden>
+                </div>
             </div>
         </div>
-        <div class="search-bar">
-            <input type="text" id="search" placeholder="Ara (WO, Task Card, Status...)">
+
+        <div class="stats-bar hidden" id="stats-bar">
+            <div class="stat-item open">OPEN: <span id="stat-open">0</span></div>
+            <div class="stat-item closed">CLOSED: <span id="stat-closed">0</span></div>
+            <div class="stat-item defer">DEFER: <span id="stat-defer">0</span></div>
+            <div class="stat-item import-date">Son Güncelleme: <span id="import-date">-</span></div>
         </div>
+
+        <div class="filters-section">
+            <div class="department-filters">
+                <span class="filter-label">Bölüm:</span>
+                <div id="dept-filters-container">
+                    <button class="filter-btn" data-dept="Cabin">Cabin</button>
+                    <button class="filter-btn" data-dept="Ortak Cabin">Ortak Cabin</button>
+                    <button class="filter-btn" data-dept="AVI">AVI</button>
+                    <button class="filter-btn" data-dept="MEC">MEC</button>
+                    <button class="filter-btn" data-dept="STR">STR</button>
+                    <button class="filter-btn" data-dept="OTHER">OTHER</button>
+                </div>
+            </div>
+            <div class="search-bar">
+                <input type="text" id="search" placeholder="Ara (WO, Task Card, Status, Uçak...)">
+            </div>
+        </div>
+
         <div id="progress-container" class="progress-container hidden">
             <div class="progress-bar">
                 <div id="progress-fill" class="progress-fill"></div>
@@ -85,6 +86,12 @@
                 </table>
             </div>
 
+            <div class="pagination-controls hidden" id="pagination-controls">
+                <button id="prev-page" class="btn btn-sm">❮ Önceki</button>
+                <span id="page-info">Sayfa 1 / 10</span>
+                <button id="next-page" class="btn btn-sm">Sonraki ❯</button>
+            </div>
+
             <!-- Card View (Mobile) -->
             <div id="card-list" class="card-list">
                 <!-- Cards will be injected here -->
@@ -93,9 +100,10 @@
     </main>
 
     <!-- Custom JS -->
-    <script src="js/storage.js"></script>
-    <script src="js/ui.js"></script>
-    <script src="js/app.js"></script>
+    <!-- Custom JS -->
+    <script type="module" src="js/storage.js"></script>
+    <script type="module" src="js/ui.js"></script>
+    <script type="module" src="js/app.js"></script>
 </body>
 
 </html>
