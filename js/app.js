@@ -1,8 +1,3 @@
-import Storage from './storage.js';
-import UI from './ui.js';
-import { writeBatch } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-
-
 const App = {
     state: {
         allData: [],
@@ -10,7 +5,7 @@ const App = {
         headers: [],
         filters: {
             global: '',
-            departments: new Set()
+            dept: ''
         },
         sort: {
             colIndex: -1,
@@ -18,91 +13,74 @@ const App = {
         },
         pagination: {
             currentPage: 1,
-            pageSize: 50,
-            totalPages: 1
+            itemsPerPage: 50
         },
-        importDate: null
+        metadata: {
+            importDate: '-'
+        }
     },
 
-    init: async function () {
+    init: function () {
         console.log('App initialized');
-        UI.init();
         this.bindEvents();
-        await this.loadData();
+        this.loadData();
     },
 
     bindEvents: function () {
         document.getElementById('fileInput').addEventListener('change', (e) => this.handleFile(e));
+        document.getElementById('search').addEventListener('input', (e) => this.handleSearch(e));
 
-        // Debounce Search
-        const searchInput = document.getElementById('search');
-        searchInput.addEventListener('input', this.debounce((e) => {
-            this.filterData('global', e.target.value.toLowerCase());
-        }, 300));
+        // Department Filters
+        const deptButtons = document.querySelectorAll('.filter-btn');
+        deptButtons.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                // Remove active class from all
+                deptButtons.forEach(b => b.classList.remove('active'));
+                // Add to clicked
+                e.target.classList.add('active');
+                // Filter
+                this.filterData('dept', e.target.dataset.dept);
+            });
+        });
+
+        // Pagination
+        document.getElementById('prev-page').addEventListener('click', () => this.changePage(-1));
+        document.getElementById('next-page').addEventListener('click', () => this.changePage(1));
     },
 
-    debounce: function (func, wait) {
-        let timeout;
-        return function (...args) {
-            clearTimeout(timeout);
-            timeout = setTimeout(() => func.apply(this, args), wait);
-        };
-    },
-
-    loadData: async function () {
-        const saved = await Storage.loadData();
+    loadData: function () {
+        const saved = Storage.load();
         if (saved) {
             this.state.allData = saved.data;
             this.state.headers = saved.headers;
-            this.state.importDate = saved.lastUpdated;
-            this.applyFilters(); // Setup initial view
+            this.state.metadata = saved.metadata || { importDate: '-' };
 
-            if (this.state.importDate) {
-                // Format date logic if needed
-                this.updateStats();
+            // Migration: Ensure "Not" column exists
+            if (!this.state.headers.includes("Not")) {
+                this.state.headers.push("Not");
+                this.state.allData.forEach(row => {
+                    row.push("");
+                });
+                this.saveData();
             }
+
+            this.state.filteredData = this.state.allData;
+            this.calculateStats();
+            this.render();
         }
     },
 
-    saveData: async function (headers, dataRows) {
-    try {
-
-        // Metadata
-        await setDoc(doc(db, this.COLLECTION_DATA, 'metadata'), {
-            headers: headers,
-            lastUpdated: new Date().toISOString()
+    saveData: function () {
+        Storage.save({
+            headers: this.state.headers,
+            data: this.state.allData,
+            metadata: this.state.metadata
         });
-
-        const batch = writeBatch(db);
-
-        dataRows.forEach(row => {
-            const id = `${row[1]}_${row[2]}`.replace(/\//g, '_');
-            const ref = doc(db, 'records', id);
-            batch.set(ref, { data: row });
-        });
-
-        await batch.commit();
-
-    } catch (e) {
-        console.error("Error saving data:", e);
-        throw e;
-    }
-},
-
-
-    
+    },
 
     handleFile: function (e) {
         const file = e.target.files[0];
         if (!file) return;
-
-        // Validation for file type
-        const validTypes = ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel'];
-        // Some browsers might not accept mime types correctly, check extension too.
-        if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
-            alert("Lütfen geçerli bir Excel dosyası (.xlsx, .xls) yükleyin.");
-            return;
-        }
 
         UI.toggleLoading(true);
         UI.toggleProgress(true);
@@ -110,17 +88,17 @@ const App = {
 
         setTimeout(() => {
             const reader = new FileReader();
-            reader.onload = async (event) => {
+            reader.onload = (event) => {
                 try {
                     const data = new Uint8Array(event.target.result);
                     const workbook = XLSX.read(data, { type: 'array' });
                     const sheet = workbook.Sheets[workbook.SheetNames[0]];
                     const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
 
-                    await this.processDataChunked(json);
+                    this.processDataChunked(json);
                 } catch (err) {
                     console.error(err);
-                    alert('Dosya okunurken hata oluştu! Dosya bozuk olabilir.');
+                    alert('Dosya okunurken hata oluştu!');
                     UI.toggleLoading(false);
                     UI.toggleProgress(false);
                 }
@@ -129,7 +107,7 @@ const App = {
         }, 100);
     },
 
-    processDataChunked: async function (rows) {
+    processDataChunked: function (rows) {
         if (!rows || rows.length < 2) {
             alert('Dosya boş veya geçersiz format!');
             UI.toggleLoading(false);
@@ -137,323 +115,112 @@ const App = {
             return;
         }
 
-        // Validate Headers - Check for critical columns like "WO", "Task Card" etc based on index
-        // Assuming strict format? 
-        // User said: "Yanlış dosya yüklenmeye çalışılırsa firebase veritabanının bozulmasını önlemek için uygulama durdurulsun."
-        // We should check if we have enough columns.
-        if (rows[0].length < 10) {
-            alert('Hatalı dosya formatı! Sütun sayısı eksik.');
-            UI.toggleLoading(false);
-            UI.toggleProgress(false);
-            return;
+        const headerRow = rows[0];
+        const columns = [0, 1, 5, 6, 12, 7, 8, 15, 16]; // Indices to keep
+
+        let headers = this.state.headers;
+        if (headers.length === 0) {
+            headers = columns.map(i => headerRow[i] || "");
+            headers.push("Oran %");
+            headers.push("Not");
         }
 
-        const headerRow = rows[0];
-        const columns = [0, 1, 5, 6, 12, 7, 8, 15, 16];
+        const existingMap = new Map();
+        const getKey = (row) => `${row[0]}_${row[1]}`;
 
-        // Load Mappings for VLOOKUP
-        const mappings = await Storage.loadMappings();
+        this.state.allData.forEach(row => {
+            const key = getKey(row);
+            existingMap.set(key, row);
+        });
 
-        // Prepare Headers - ADD "Uçak İsmi" at index 0
-        let headers = ["Uçak İsmi"];
-        columns.forEach(i => headers.push(headerRow[i] || ""));
-        headers.push("Oran %");
-        headers.push("Bölüm"); // New Department Column
-        headers.push("Not");   // Note moved to end
-
-        // Merge Logic
-        const newRows = [];
         const totalRows = rows.length - 1;
         let currentIndex = 1;
-        const CHUNK_SIZE = 1000;
+        const CHUNK_SIZE = 500;
 
-        const processChunk = async () => {
+        const processChunk = () => {
             const chunkEnd = Math.min(currentIndex + CHUNK_SIZE, rows.length);
 
             for (let i = currentIndex; i < chunkEnd; i++) {
                 const row = rows[i];
-                if (!row || row.length === 0) continue;
-
-                const mappedRow = [];
-
-                // 1. Get WO for VLOOKUP
-                const wo = row[0]; // Assuming WO is at index 0 of Source
-                const aircraftName = mappings[wo] || "";
-                mappedRow.push(aircraftName); // Index 0 in App Data
-
-                // 2. Map other columns
-                columns.forEach((colIdx, idx) => {
+                const mappedRow = columns.map((colIdx, idx) => {
                     let cell = row[colIdx];
                     if (cell === undefined || cell === null) cell = "";
-                    // Date fix for column 4 (Source index 12)
                     if (idx === 4 && typeof cell === 'number') {
                         cell = this.excelDateToJSDate(cell);
                     }
-                    mappedRow.push(cell);
+                    return cell;
                 });
 
-                // 3. Calc Percentage
-                // Source indices 15 and 16 correspond to mapped indices:
-                // [Uçak, 0, 1, 5, 6, 12, 7, 8, 15, 16]
-                // 0->1, 1->2 ...
-                // 15 is at index 7+1 = 8? 
-                // headers: [Ucak, WO, Task, ..., val1, val2, ...]
-                // columns: [0, 1, 5, 6, 12, 7, 8, 15, 16]
-                // mappedRow (value): [Air, col0, col1, col5, col6, col12, col7, col8, col15, col16]
-                // Indices in mappedRow:
-                // Air: 0
-                // col0: 1
-                // col15: 8
-                // col16: 9
+                let val1 = parseFloat(mappedRow[7]);
+                let val2 = parseFloat(mappedRow[8]);
 
-                let val1 = parseFloat(mappedRow[8]);
-                let val2 = parseFloat(mappedRow[9]);
                 if (isNaN(val1)) val1 = 0;
                 if (isNaN(val2)) val2 = 0;
-                let percentage = val1 !== 0 ? (val2 / val1) * 100 : 0;
+
+                let percentage = 0;
+                if (val1 !== 0) {
+                    percentage = (val2 / val1) * 100;
+                }
                 mappedRow.push(percentage.toFixed(2));
 
-                // 4. Department (Empty default)
-                mappedRow.push("");
+                const key = getKey(mappedRow);
+                const existingRow = existingMap.get(key);
 
-                // 5. Note (Empty default)
-                mappedRow.push("");
-
-                newRows.push(mappedRow);
+                if (existingRow) {
+                    const existingNote = existingRow[10] || "";
+                    mappedRow.push(existingNote);
+                    existingMap.set(key, mappedRow);
+                } else {
+                    mappedRow.push("");
+                    existingMap.set(key, mappedRow);
+                }
             }
 
             currentIndex = chunkEnd;
-            UI.updateProgress(Math.round(((currentIndex - 1) / totalRows) * 100), `%${Math.round(((currentIndex - 1) / totalRows) * 100)} İçe Aktarılıyor`);
+
+            const percent = Math.round(((currentIndex - 1) / totalRows) * 100);
+            UI.updateProgress(percent, `%${percent} İşlendi`);
 
             if (currentIndex < rows.length) {
-                setTimeout(processChunk, 0);
+                requestAnimationFrame(processChunk);
             } else {
-                // Here we should merge with existing notes and departments if any?
-                const existingData = this.state.allData;
-                const metaMap = new Map(); // Store {note, dept}
-                const existingNoteIdx = this.state.headers.indexOf("Not");
-                const existingDeptIdx = this.state.headers.indexOf("Bölüm");
-
-                existingData.forEach(r => {
-                    const key = `${r[1]}_${r[2]}`; // WO_TaskCard
-                    const note = existingNoteIdx !== -1 ? r[existingNoteIdx] : "";
-                    const dept = existingDeptIdx !== -1 ? r[existingDeptIdx] : "";
-                    metaMap.set(key, { note: note, dept: dept });
-                });
-
-                // Apply to newRows
-                const newNoteIdx = headers.indexOf("Not");
-                const newDeptIdx = headers.indexOf("Bölüm");
-
-                newRows.forEach(r => {
-                    const key = `${r[1]}_${r[2]}`; // WO_TaskCard
-                    if (metaMap.has(key)) {
-                        const meta = metaMap.get(key);
-                        if (newNoteIdx !== -1) r[newNoteIdx] = meta.note || "";
-                        if (newDeptIdx !== -1) r[newDeptIdx] = meta.dept || "";
-                    }
-                });
-
-                this.state.headers = headers;
-                this.state.allData = newRows;
-                this.state.importDate = new Date().toLocaleString('tr-TR');
-
-                await this.saveData(); // Save to Firebase
-                this.applyFilters();
-
-                UI.toggleLoading(false);
-                UI.toggleProgress(false);
-                UI.updateStats({
-                    open: 0,
-                    closed: 0,
-                    defer: 0,
-                    date: this.state.importDate
-                }); // Will be recalculated in applyFilters
-                alert('Veriler başarıyla yüklendi ve Firebase\'e kaydedildi.');
+                this.finalizeProcess(existingMap, headers);
             }
         };
 
         processChunk();
     },
 
-    updateNote: function (row, note) {
-        // Update in memory
-        const noteIdx = this.state.headers.indexOf("Not");
-        if (noteIdx !== -1) {
-            row[noteIdx] = note;
-            Storage.saveRow(row);
-        }
-    },
+    finalizeProcess: function (dataMap, headers) {
+        const finalData = Array.from(dataMap.values());
 
-    updateRowDepartment: function (row, dept) {
-        // Toggle logic: dept is a string (e.g. "Cabin")
-        // Stored as comma separated string "Cabin,AVI"
-        const deptIdx = this.state.headers.indexOf("Bölüm");
-        if (deptIdx === -1) return;
+        this.state.headers = headers;
+        this.state.allData = finalData;
 
-        let current = row[deptIdx] ? String(row[deptIdx]).split(',') : [];
-        if (current.includes(dept)) {
-            current = current.filter(d => d !== dept);
-        } else {
-            current.push(dept);
-        }
+        // Update Metadata
+        const now = new Date();
+        this.state.metadata.importDate = now.toLocaleString('tr-TR');
 
-        row[deptIdx] = current.join(',');
-        Storage.saveRow(row);
-        // Force re-render of this specific card? Or whole view?
-        // Since it might affect filters, we should re-apply filters if active.
-        // But for UX responsiveness, let UI handle visual toggle, and we verify filter.
-        if (this.state.filters.departments.size > 0) {
-            this.applyFilters();
-        }
-    },
+        this.state.filteredData = finalData;
 
-    changePage: function (delta) {
-        const next = this.state.pagination.currentPage + delta;
-        if (next >= 1 && next <= this.state.pagination.totalPages) {
-            this.state.pagination.currentPage = next;
-            this.render();
-        }
-    },
-
-    toggleDepartmentFilter: function (dept) {
-        if (this.state.filters.departments.has(dept)) {
-            this.state.filters.departments.delete(dept);
-        } else {
-            this.state.filters.departments.add(dept);
-        }
-        this.applyFilters();
-    },
-
-    filterData: function (colIndex, value) {
-        if (colIndex === 'global') {
-            this.state.filters.global = value;
-        } else {
-            this.state.filters[colIndex] = value;
-        }
-        this.state.pagination.currentPage = 1; // Reset to page 1
-        this.applyFilters();
-    },
-
-    applyFilters: function () {
-        // 1. Filter
-        const globalFilter = this.state.filters.global;
-        const deptFilters = this.state.filters.departments;
-        // Filters definition: { colIndex: value }
-
-        this.state.filteredData = this.state.allData.filter(row => {
-            // Global Search
-            if (globalFilter) {
-                const globalMatch = row.some(cell =>
-                    String(cell).toLowerCase().includes(globalFilter)
-                );
-                if (!globalMatch) return false;
-            }
-
-            // Department Filter (Logic: Matches any selected? Or implicit column?)
-            // Requirement: "Not özelliği nün üst tarafına Bölüm isminde sekme eklensin... Checkbox mantığı"
-            // Wait, does "Bölüm" map to a column? Or is it a Tag user applies?
-            // "Kullanıcı isteğine göre butonlara basıldığında seçili kalsın. Checkbox mantığı yani. Bu veriler için filtre ekle"
-            // This implies the USER sets these departments.
-            // Oh! It's a tagging feature? "Not özelliğinin üst tarafına..."
-            // If it's a tagging feature, we need to store it. 
-            // Previous implementation had just "Not".
-            // Implementation Plan: "Handle Department tagging interpretation and storage."
-            // So we need another column for "Department" or combine with Note?
-            // Let's add a "Department" column BEFORE "Not".
-
-            // NOTE: I missed adding "Department" column in `processDataChunked`. 
-            // I should fix that or handle it dynamically.
-            // Let's assume it's stored in a column named "Bölüm".
-
-            // RE-READ: "Not özelliğinin üst tarafına... seçim butonları eklensin"
-            // This sounds like input controls in the Card View (or row expansion).
-            // Meaning: User TAGS a row as 'Cabin'.
-            // So we need to store this tag.
-
-            if (deptFilters.size > 0) {
-                const deptIdx = this.state.headers.indexOf("Bölüm");
-                if (deptIdx !== -1) {
-                    const rowDepts = row[deptIdx] ? String(row[deptIdx]).split(',') : [];
-                    // Check if row has ANY of the selected filters
-                    const hasMatch = [...deptFilters].some(filter => rowDepts.includes(filter));
-                    if (!hasMatch) return false;
-                }
-            }
-
-            // Specific Column Filters
-            for (const key in this.state.filters) {
-                if (key === 'global' || key === 'departments') continue;
-                if (!this.state.filters[key]) continue;
-                if (String(row[key]) !== String(this.state.filters[key])) return false;
-            }
-
-            return true;
-        });
-
-        // 2. Sort
-        if (this.state.sort.colIndex !== -1) {
-            // ... sort logic ...
-            const { colIndex: sortIdx, asc } = this.state.sort;
-            this.state.filteredData.sort((a, b) => {
-                // ... comparisons ...
-                let valA = a[sortIdx];
-                let valB = b[sortIdx];
-                // numeric/date/string compare
-                // (simplified for brevity)
-                if (valA < valB) return asc ? -1 : 1;
-                if (valA > valB) return asc ? 1 : -1;
-                return 0;
-            });
-        }
-
-        // 3. Stats Calculation on Filtered Data (or All Data? Usually All Data or current view?)
-        // "Sayfanın üst bölümüne OPEN... istatistiği gösterilsin"
-        // Usually stats reflect the current filter? Or global?
-        // Let's do Global stats for now as it's often more useful to see total workload.
-        // Or Filtered. Let's do Filtered.
-        const stats = {
-            open: 0,
-            closed: 0,
-            defer: 0,
-            date: this.state.importDate
-        };
-
-        // Find Status Column Index (Scanning headers or row[..])
-        // Status usually "OPEN", "CLOSED".
-        // Headers we built: [Ucak, WO, Task, ..., Status(index?), ...]
-        // Columns map: [0, 1, 5, 6, ...] -> 6 comes from source.
-        // Source 6 is Status? 
-        // In processDataChunked: [Ucak, col0, col1, col5, col6...]
-        // So Status is index 4.
-        const statusIdx = 4; // Check logic: 0=Ucak, 1=WO, 2=Task, 3=col5, 4=col6(Status)
-
-        this.state.filteredData.forEach(row => {
-            const status = String(row[statusIdx]).toUpperCase();
-            if (status.includes('OPEN')) stats.open++;
-            else if (status.includes('CLOSED')) stats.closed++;
-            else if (status.includes('DEFER')) stats.defer++;
-        });
-        UI.updateStats(stats);
-
-        // 4. Update Pagination
-        this.state.pagination.totalPages = Math.ceil(this.state.filteredData.length / this.state.pagination.pageSize);
-        this.state.pagination.currentPage = 1;
-
+        this.calculateStats();
+        this.saveData();
         this.render();
+
+        UI.toggleLoading(false);
+        UI.toggleProgress(false);
+        alert('İşlem tamamlandı!');
     },
 
-    render: function () {
-        const { currentPage, pageSize } = this.state.pagination;
-        const start = (currentPage - 1) * pageSize;
-        const end = start + pageSize;
-        const pageData = this.state.filteredData.slice(start, end);
-
-        UI.showData(this.state.headers, this.state.filteredData, pageData);
-        UI.updatePagination(currentPage, this.state.pagination.totalPages);
+    updateNote: function (row, note) {
+        const noteIndex = 10;
+        while (row.length <= noteIndex) {
+            row.push("");
+        }
+        row[noteIndex] = note;
+        this.saveData();
     },
 
-    // Helper
     excelDateToJSDate: function (serial) {
         if (!serial || isNaN(serial) || serial < 20000) return serial;
         const utc_days = Math.floor(serial - 25569);
@@ -465,23 +232,183 @@ const App = {
         return `${day}.${month}.${year}`;
     },
 
-    getUniqueValues: function (colIndex) {
-        return [...new Set(this.state.allData.map(row => row[colIndex]))];
+    handleSearch: function (e) {
+        const query = e.target.value.toLowerCase();
+        this.filterData('global', query);
     },
 
-    sortData: function (colIndex) {
-        if (this.state.sort.colIndex === colIndex) {
-            this.state.sort.asc = !this.state.sort.asc;
+    filterData: function (type, value) {
+        this.state.filters[type] = value;
+        this.state.pagination.currentPage = 1; // Reset to page 1 on filter
+        this.applyFilters();
+    },
+
+    applyFilters: function () {
+        this.state.filteredData = this.state.allData.filter(row => {
+            // Global Search
+            if (this.state.filters.global) {
+                const globalMatch = row.some(cell =>
+                    String(cell).toLowerCase().includes(this.state.filters.global)
+                );
+                if (!globalMatch) return false;
+            }
+
+            // Department Filter
+            if (this.state.filters.dept) {
+                // Assuming matched columns for department logic. 
+                // We check if ANY of the specific columns contains the Dept string.
+                // Or simply check the whole row for safety if we aren't sure of column index.
+                // Given "Cabin", "Ortak Cabin", "AVI"...
+                const dept = this.state.filters.dept.toLowerCase();
+                const rowStr = row.join(' ').toLowerCase();
+
+                // Specific logic for "Cabin" vs "Ortak Cabin"
+                if (dept === 'cabin') {
+                    // Start logic: exact match in a cell? 
+                    // Let's assume there is a column that holds this value.
+                    // If we just check includes, 'Ortak Cabin' includes 'Cabin'.
+                    // So we should check if any cell strictly equals 'cabin' OR if we check for specific columns.
+                    // For now, let's look for exact cell match in the row.
+                    const hasExact = row.some(cell => String(cell).trim().toLowerCase() === dept);
+                    // Also consider "Cabin" might be part of "Cabin Interior" etc.
+                    // If 'Ortak Cabin' is a separate category, we want to exclude it if user selected 'Cabin'?
+                    // Usually filters are inclusive.
+                    // Let's stick to: Cell value must INCLUDE the search term.
+                    // But if I search 'Cabin', I get 'Ortak Cabin'.
+                    // If I search 'Ortak Cabin', I get 'Ortak Cabin'.
+                    // User might want distinct. 
+                    // Let's try exact match for Dept first.
+                    // If exact match fails (e.g. data has 'AVI-1'), then we might need includes.
+
+                    // Let's perform a smart check: 
+                    // Check specific columns (e.g. index 3, 5, 6)
+
+                    // Since I don't know the exact column, I will check if ANY cell *starts with* or *equals* the dept.
+                    const match = row.some(cell => {
+                        const c = String(cell).toLowerCase();
+                        return c === dept || c.includes(dept);
+                    });
+                    if (!match) return false;
+                } else {
+                    // For others
+                    const match = row.some(cell => String(cell).toLowerCase().includes(dept));
+                    if (!match) return false;
+                }
+            }
+
+            return true;
+        });
+
+        // Re-apply sort if active
+        if (this.state.sort.colIndex !== -1) {
+            this.sortData(this.state.sort.colIndex, false);
         } else {
-            this.state.sort.colIndex = colIndex;
-            this.state.sort.asc = true;
+            this.render();
         }
-        this.applyFilters(); // Re-sort and render
+
+        this.calculateStats(); // Recalculate stats based on filtered data? Or all data? Usually Dashboard stats show *current view* or *overall*? 
+        // "Stats Bar" usually implies global stats or filtered stats.
+        // Let's show Global Stats (Total, Open, Closed) of the *whole* dataset? 
+        // Or stats of the *filtered* dataset?
+        // Let's assume *Global* for "Import Date", but "Open/Closed" might be useful for filtered too.
+        // However, usually "Dashboard" stats at top are summary of imported file.
+        // Let's stick to ALL DATA stats for the counters, so filters don't confuse the "Total loaded" context.
+        // But if user filters "Cabin", they might want to know how many Open in Cabin.
+        // Let's do *Filtered* stats. It's more dynamic.
+        this.calculateStats();
+    },
+
+    sortData: function (colIndex, toggle = true) {
+        if (toggle) {
+            if (this.state.sort.colIndex === colIndex) {
+                this.state.sort.asc = !this.state.sort.asc;
+            } else {
+                this.state.sort.colIndex = colIndex;
+                this.state.sort.asc = true;
+            }
+        }
+
+        const { colIndex: sortIdx, asc } = this.state.sort;
+
+        this.state.filteredData.sort((a, b) => {
+            let valA = a[sortIdx];
+            let valB = b[sortIdx];
+
+            if (sortIdx === 4) {
+                const parseDate = (d) => {
+                    if (!d) return 0;
+                    if (typeof d === 'string' && d.includes('.')) {
+                        const p = d.split('.');
+                        return new Date(p[2], p[1] - 1, p[0]).getTime();
+                    }
+                    return 0;
+                };
+                return asc ? parseDate(valA) - parseDate(valB) : parseDate(valB) - parseDate(valA);
+            }
+
+            const numA = parseFloat(valA);
+            const numB = parseFloat(valB);
+
+            if (!isNaN(numA) && !isNaN(numB)) {
+                return asc ? numA - numB : numB - numA;
+            }
+
+            const strA = String(valA).toLowerCase();
+            const strB = String(valB).toLowerCase();
+
+            if (strA < strB) return asc ? -1 : 1;
+            if (strA > strB) return asc ? 1 : -1;
+            return 0;
+        });
+
+        this.render();
+    },
+
+    changePage: function (direction) {
+        const { currentPage, itemsPerPage } = this.state.pagination;
+        const totalPages = Math.ceil(this.state.filteredData.length / itemsPerPage);
+        const newPage = currentPage + direction;
+
+        if (newPage >= 1 && newPage <= totalPages) {
+            this.state.pagination.currentPage = newPage;
+            this.render();
+        }
+    },
+
+    calculateStats: function () {
+        // We calculate stats on Filtered Data or All Data?
+        // Let's do Filtered Data so it reflects the current view.
+        // Status Column: Index 6
+        const data = this.state.filteredData;
+        let open = 0, closed = 0, defer = 0;
+
+        data.forEach(row => {
+            const status = String(row[6]).toUpperCase();
+            if (status.includes('OPEN')) open++;
+            else if (status.includes('CLOSED')) closed++;
+            else if (status.includes('DEFER')) defer++;
+        });
+
+        UI.updateStats({
+            open,
+            closed,
+            defer,
+            date: this.state.metadata.importDate
+        });
+    },
+
+    render: function () {
+        const { currentPage, itemsPerPage } = this.state.pagination;
+        const start = (currentPage - 1) * itemsPerPage;
+        const end = start + itemsPerPage;
+
+        const pageData = this.state.filteredData.slice(start, end);
+        const totalPages = Math.ceil(this.state.filteredData.length / itemsPerPage);
+
+        UI.showData(this.state.headers, pageData, currentPage, totalPages);
     }
 };
 
-export default App;
 document.addEventListener('DOMContentLoaded', () => {
     App.init();
 });
-window.App = App; // For inline onclick handlers in generated HTML
