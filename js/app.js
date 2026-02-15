@@ -236,6 +236,7 @@ const App = {
 
         alert('İşlem tamamlandı!');
         UI.toggleProgress(false);
+        UI.toggleLoading(false);
     },
 
     updateNote: async function (row, note) {
