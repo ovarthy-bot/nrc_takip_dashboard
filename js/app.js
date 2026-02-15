@@ -22,8 +22,8 @@ const App = {
         document.getElementById('clearDataBtn').addEventListener('click', () => this.clearData());
     },
 
-    loadData: function () {
-        const saved = Storage.load();
+    loadData: async function () {
+        const saved = await Storage.load();
         if (saved) {
             this.state.allData = saved.data;
             this.state.headers = saved.headers;
@@ -39,7 +39,7 @@ const App = {
                     // So we push 1 more.
                     row.push("");
                 });
-                this.saveData(); // Save migrated data
+                await this.saveData(); // Save migrated data
                 console.log("Data migrated: Added 'Not' column.");
             }
 
@@ -48,16 +48,16 @@ const App = {
         }
     },
 
-    saveData: function () {
-        Storage.save({
+    saveData: async function () {
+        await Storage.save({
             headers: this.state.headers,
             data: this.state.allData
         });
     },
 
-    clearData: function () {
+    clearData: async function () {
         if (confirm('Verileri temizlemek istediğinize emin misiniz?')) {
-            Storage.clear();
+            await Storage.clear();
             this.state.allData = [];
             this.state.filteredData = [];
             this.state.headers = [];
@@ -225,7 +225,7 @@ const App = {
         processChunk();
     },
 
-    finalizeProcess: function (dataMap, headers) {
+    finalizeProcess: async function (dataMap, headers) {
         // Convert Map values back to Array
         const finalData = Array.from(dataMap.values());
 
@@ -234,7 +234,7 @@ const App = {
         this.state.filteredData = finalData; // Reset filter on new import? Or re-apply?
         // Let's reset filter for now to show all data (or just the updated set).
 
-        this.saveData();
+        await this.saveData();
         this.render();
 
         UI.toggleLoading(false);
@@ -242,7 +242,7 @@ const App = {
         alert('İşlem tamamlandı!');
     },
 
-    updateNote: function (row, note) {
+    updateNote: async function (row, note) {
         // row is a reference to the array in allData
         // We find the note column index.
         const noteIndex = 10; // Fixed based on our logic (9 cols + 1 pct + 1 note)
@@ -251,7 +251,7 @@ const App = {
             row.push("");
         }
         row[noteIndex] = note;
-        this.saveData();
+        await this.saveData();
         // No need to re-render entire table if just updating memory, 
         // but if search depends on it, we might need to if we were filtering by note content (not yet implemented in search though).
     },
