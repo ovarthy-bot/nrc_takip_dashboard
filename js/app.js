@@ -1,111 +1,117 @@
 const App = {
     state: {
         allData: [], filteredData: [], mappings: {},
-        currentPage: 1, pageSize: 50,
-        searchQuery: '', activeView: 'dashboard',
-        lastImport: null
+        headers: [], currentPage: 1, pageSize: 50,
+        lastImport: null, searchTimeout: null
     },
 
     init: function() {
+        Storage.initFirebase();
         this.state.mappings = Storage.loadMappings();
-        const saved = Storage.loadData();
-        if(saved) {
+        const saved = Storage.loadAll();
+        if (saved) {
             this.state.allData = saved.data;
             this.state.lastImport = saved.timestamp;
             this.applyFilters();
         }
         this.bindEvents();
-        UI.renderMappings(this.state.mappings);
     },
 
     bindEvents: function() {
-        // Debounce Search
-        const searchInput = document.getElementById('search');
-        searchInput.addEventListener('input', this.debounce(() => {
-            this.state.searchQuery = searchInput.value.toLowerCase();
-            this.state.currentPage = 1;
-            this.applyFilters();
-        }, 300));
-
         document.getElementById('fileInput').addEventListener('change', (e) => this.handleFile(e));
         
-        // Mobile Filter Events
-        document.getElementById('filter-aircraft').addEventListener('change', () => this.applyFilters());
-        document.getElementById('filter-dept').addEventListener('change', () => this.applyFilters());
-    },
-
-    debounce: (func, delay) => {
-        let timeout;
-        return (...args) => {
-            clearTimeout(timeout);
-            timeout = setTimeout(() => func.apply(this, args), delay);
-        };
+        // Debounce Search
+        document.getElementById('search').addEventListener('input', (e) => {
+            clearTimeout(this.state.searchTimeout);
+            this.state.searchTimeout = setTimeout(() => {
+                this.state.currentPage = 1;
+                this.applyFilters(e.target.value);
+            }, 300);
+        });
     },
 
     handleFile: function(e) {
         const file = e.target.files[0];
-        if(!file) return;
+        if (!file) return;
 
         const reader = new FileReader();
         reader.onload = (evt) => {
             const data = new Uint8Array(evt.target.result);
-            const workbook = XLSX.read(data, {type: 'array'});
-            const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {header: 1});
-            
-            // Güvenlik: Yanlış dosya kontrolü
-            if(!json[0].includes("WO") && !json[0].includes("Work Order")) {
-                alert("Hatalı Dosya Formtı! İşlem durduruldu.");
+            const workbook = XLSX.read(data, { type: 'array' });
+            const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1 });
+
+            // VALIDASYON: WO ve Task Card kontrolü
+            if (!json[0].includes("WO") && !json[0].includes("Work Order")) {
+                alert("Hata: Geçersiz Excel formatı! Veritabanı korunması için işlem durduruldu.");
                 return;
             }
 
-            this.processData(json);
+            this.processDataChunked(json);
         };
         reader.readAsArrayBuffer(file);
     },
 
-    processData: function(rows) {
-        const processed = rows.slice(1).map(row => {
-            // VLOOKUP mantığı: WO row[0]'da ise
-            const wo = String(row[0]);
-            const aircraft = this.state.mappings[wo] || "Bilinmiyor";
-            return [aircraft, ...row, "OTHER"]; // Uçak İsmi + Veri + Başlangıç Bölümü
-        });
+    processDataChunked: function(rows) {
+        UI.toggleProgress(true);
+        const newRows = [];
+        const CHUNK_SIZE = 500;
+        let index = 1;
 
-        this.state.allData = processed;
-        this.state.lastImport = new Date().toLocaleString('tr-TR');
-        Storage.saveData({data: processed, timestamp: this.state.lastImport});
-        this.applyFilters();
+        const process = () => {
+            const end = Math.min(index + CHUNK_SIZE, rows.length);
+            for (let i = index; i < end; i++) {
+                const row = rows[i];
+                const wo = String(row[0]);
+                const aircraft = this.state.mappings[wo] || "Tanımsız";
+                
+                // [Uçak, WO, Task, ..., Not, Bölüm]
+                const processedRow = [aircraft, ...row.slice(0, 9), "", "OTHER"];
+                newRows.push(processedRow);
+            }
+            
+            index = end;
+            const pct = Math.round((index / rows.length) * 100);
+            UI.updateProgress(pct);
+
+            if (index < rows.length) {
+                requestAnimationFrame(process);
+            } else {
+                this.state.allData = newRows;
+                this.state.lastImport = new Date().toLocaleString();
+                this.state.headers = ["Uçak", ...rows[0].slice(0, 9), "Notlar", "Bölüm"];
+                Storage.saveAll(this.state.allData, this.state.lastImport);
+                this.applyFilters();
+                UI.toggleProgress(false);
+                alert("Veriler başarıyla yüklendi.");
+            }
+        };
+        process();
     },
 
-    applyFilters: function() {
-        const acFilter = document.getElementById('filter-aircraft').value;
-        const deptFilter = document.getElementById('filter-dept').value;
-
-        this.state.filteredData = this.state.allData.filter(row => {
-            const matchesSearch = row.some(cell => String(cell).toLowerCase().includes(this.state.searchQuery));
-            const matchesAC = acFilter === "" || row[0] === acFilter;
-            const matchesDept = deptFilter === "" || row[row.length - 1] === deptFilter;
-            return matchesSearch && matchesAC && matchesDept;
-        });
-
-        UI.render(this.state.filteredData);
-        UI.updateStats(this.state.filteredData);
+    applyFilters: function(query = "") {
+        const q = query.toLowerCase();
+        this.state.filteredData = this.state.allData.filter(row => 
+            row.some(cell => String(cell).toLowerCase().includes(q))
+        );
+        UI.render();
     },
 
-    addMapping: function() {
+    saveMapping: function() {
         const wo = document.getElementById('map-wo').value;
         const ac = document.getElementById('map-ac').value;
-        if(!wo || !ac) return;
+        if (!wo || !ac) return;
         this.state.mappings[wo] = ac;
         Storage.saveMappings(this.state.mappings);
-        UI.renderMappings(this.state.mappings);
-        alert("Eşleşme kaydedildi. Mevcut verileri güncellemek için tekrar Excel yükleyin.");
+        UI.renderMappings();
+        alert("Eşleşme eklendi. Listeyi güncellemek için Excel'i tekrar yükleyin.");
     },
 
-    switchView: function(view) {
-        document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
-        document.getElementById(`view-${view}`).classList.remove('hidden');
-        document.querySelectorAll('.btn-tab').forEach(btn => btn.classList.remove('active'));
+    switchPage: function(page) {
+        document.getElementById('page-dashboard').classList.toggle('hidden', page !== 'dashboard');
+        document.getElementById('page-mapping').classList.toggle('hidden', page !== 'mapping');
+        document.querySelectorAll('.tab-link').forEach(btn => 
+            btn.classList.toggle('active', btn.textContent.toLowerCase().includes(page === 'mapping' ? 'uçak' : 'dash'))
+        );
     }
 };
 
