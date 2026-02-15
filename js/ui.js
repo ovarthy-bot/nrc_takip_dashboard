@@ -6,7 +6,24 @@ const UI = {
         loading: document.getElementById('loading'),
         emptyState: document.getElementById('empty-state'),
         dataContainer: document.getElementById('data-container'),
-        clearBtn: document.getElementById('clearDataBtn')
+        dataContainer: document.getElementById('data-container'),
+        clearBtn: document.getElementById('clearDataBtn'),
+        progressContainer: document.getElementById('progress-container'),
+        progressFill: document.getElementById('progress-fill'),
+        progressText: document.getElementById('progress-text')
+    },
+
+    toggleProgress: function (show) {
+        if (show) {
+            this.elements.progressContainer.classList.remove('hidden');
+        } else {
+            this.elements.progressContainer.classList.add('hidden');
+        }
+    },
+
+    updateProgress: function (percent, text) {
+        this.elements.progressFill.style.width = `${percent}%`;
+        if (text) this.elements.progressText.textContent = text;
     },
 
     toggleLoading: function (show) {
@@ -154,6 +171,35 @@ const UI = {
                 rowDiv.appendChild(value);
                 card.appendChild(rowDiv);
             });
+
+            // Note Section
+            const noteDiv = document.createElement('div');
+            noteDiv.className = 'card-note';
+
+            const noteLabel = document.createElement('label');
+            noteLabel.textContent = 'Notlar:';
+
+            const noteInput = document.createElement('textarea');
+            noteInput.placeholder = 'Not ekle...';
+            // Assuming the note is stored in the last column (index 9, after percentage)
+            // But wait, the previous code pushed percentage at the end.
+            // We need to check where the note is stored.
+            // Let's assume the note is the LAST element in the row array.
+            // Current structure: [0..8 (original), 9 (percentage)]
+            // So note would be index 10.
+            // We'll let App.js handle the column index logic, but here we just grab the last element if headers include "Not"
+
+            // Check if "Not" is in headers
+            const noteIndex = headers.indexOf('Not');
+            if (noteIndex !== -1) {
+                noteInput.value = row[noteIndex] || '';
+                noteInput.onchange = (e) => App.updateNote(row, e.target.value);
+            }
+
+            noteDiv.appendChild(noteLabel);
+            noteDiv.appendChild(noteInput);
+            card.appendChild(noteDiv);
+
             this.elements.cardList.appendChild(card);
         });
     }
