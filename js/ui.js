@@ -6,7 +6,6 @@ const UI = {
         loading: document.getElementById('loading'),
         emptyState: document.getElementById('empty-state'),
         dataContainer: document.getElementById('data-container'),
-        dataContainer: document.getElementById('data-container'),
         clearBtn: document.getElementById('clearDataBtn'),
         progressContainer: document.getElementById('progress-container'),
         progressFill: document.getElementById('progress-fill'),
@@ -60,11 +59,11 @@ const UI = {
         headers.forEach((h, index) => {
             const th = document.createElement('th');
             th.textContent = h;
-            th.onclick = () => App.sortData(index);
+            th.onclick = () => window.App.sortData(index); // App is global
 
             // Add sorting indicator if active
-            if (App.state.sort.colIndex === index) {
-                th.textContent += App.state.sort.asc ? ' ▲' : ' ▼';
+            if (window.App.state.sort.colIndex === index) {
+                th.textContent += window.App.state.sort.asc ? ' ▲' : ' ▼';
             }
 
             // Specific columns tight
@@ -87,7 +86,7 @@ const UI = {
                 select.innerHTML = '<option value="">Tümü</option>';
 
                 // Get unique values
-                const unique = [...new Set(App.state.allData.map(row => row[index]))].sort();
+                const unique = [...new Set(window.App.state.allData.map(row => row[index]))].sort();
                 unique.forEach(val => {
                     if (val) {
                         const opt = document.createElement('option');
@@ -98,11 +97,11 @@ const UI = {
                 });
 
                 // Set current filter value
-                if (App.state.filters[index]) {
-                    select.value = App.state.filters[index];
+                if (window.App.state.filters[index]) {
+                    select.value = window.App.state.filters[index];
                 }
 
-                select.onchange = (e) => App.filterData(index, e.target.value);
+                select.onchange = (e) => window.App.filterData(index, e.target.value);
                 th.appendChild(select);
             }
             trFilter.appendChild(th);
@@ -193,7 +192,7 @@ const UI = {
             const noteIndex = headers.indexOf('Not');
             if (noteIndex !== -1) {
                 noteInput.value = row[noteIndex] || '';
-                noteInput.onchange = (e) => App.updateNote(row, e.target.value);
+                noteInput.onchange = (e) => window.App.updateNote(row, e.target.value);
             }
 
             noteDiv.appendChild(noteLabel);
@@ -204,3 +203,6 @@ const UI = {
         });
     }
 };
+
+window.UI = UI;
+export default UI;
