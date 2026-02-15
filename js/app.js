@@ -1,5 +1,7 @@
 import Storage from './storage.js';
 import UI from './ui.js';
+import { writeBatch } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
 
 const App = {
     state: {
@@ -62,13 +64,33 @@ const App = {
         }
     },
 
-    saveData: async function () {
-        // We save the entire dataset config
-        // Actually, we rely on Storage to handle persistence.
-        // For notes/edits, we might need granular save.
-        // But for consistency:
-        await Storage.saveData(this.state.headers, this.state.allData);
-    },
+    saveData: async function (headers, dataRows) {
+    try {
+
+        // Metadata
+        await setDoc(doc(db, this.COLLECTION_DATA, 'metadata'), {
+            headers: headers,
+            lastUpdated: new Date().toISOString()
+        });
+
+        const batch = writeBatch(db);
+
+        dataRows.forEach(row => {
+            const id = `${row[1]}_${row[2]}`.replace(/\//g, '_');
+            const ref = doc(db, 'records', id);
+            batch.set(ref, { data: row });
+        });
+
+        await batch.commit();
+
+    } catch (e) {
+        console.error("Error saving data:", e);
+        throw e;
+    }
+},
+
+
+    
 
     handleFile: function (e) {
         const file = e.target.files[0];
