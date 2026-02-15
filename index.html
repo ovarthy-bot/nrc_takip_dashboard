@@ -1,78 +1,86 @@
 <!DOCTYPE html>
 <html lang="tr">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NRC Dashboard</title>
-
-    <!-- Google Fonts -->
+    <title>NRC Dashboard Pro</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-
-    <!-- SheetJS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-
-    <!-- Custom CSS -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <link rel="stylesheet" href="css/style.css">
 </head>
-
 <body>
-
     <header>
+        <div class="header-top">
+            <div class="stats-panel">
+                <div class="stat-item open">OPEN: <span id="stat-open">0</span></div>
+                <div class="stat-item closed">CLOSED: <span id="stat-closed">0</span></div>
+                <div class="stat-item defer">DEFER: <span id="stat-defer">0</span></div>
+            </div>
+            <div class="import-info">Son İçe Aktarma: <span id="last-import-time">-</span></div>
+        </div>
+
         <div class="header-content">
-            <h1>NRC Dashboard</h1>
+            <nav class="view-tabs">
+                <button class="btn-tab active" onclick="App.switchView('dashboard')">Dashboard</button>
+                <button class="btn-tab" onclick="App.switchView('aircraft')">Uçak Eşleştirme</button>
+            </nav>
             <div class="controls">
-                <label for="fileInput" class="btn btn-primary">
-                    <span class="icon">📂</span> Excel Yükle
-                </label>
+                <label for="fileInput" class="btn btn-primary">📂 Excel Yükle</label>
                 <input type="file" id="fileInput" accept=".xlsx,.xls" hidden>
-                <button id="clearDataBtn" class="btn btn-danger" hidden>Verileri Temizle</button>
             </div>
         </div>
-        <div class="search-bar">
-            <input type="text" id="search" placeholder="Ara (WO, Task Card, Status...)">
+
+        <div class="search-section">
+            <div class="search-bar">
+                <input type="text" id="search" placeholder="Hızlı Ara (Debounced)...">
+            </div>
+            <div id="mobile-filters" class="mobile-filters-container">
+                <select id="filter-aircraft"><option value="">Tüm Uçaklar</option></select>
+                <select id="filter-dept"><option value="">Tüm Bölümler</option></select>
+            </div>
         </div>
+
         <div id="progress-container" class="progress-container hidden">
-            <div class="progress-bar">
-                <div id="progress-fill" class="progress-fill"></div>
-            </div>
-            <span id="progress-text">İşleniyor...</span>
+            <div class="progress-bar"><div id="progress-fill" class="progress-fill"></div></div>
+            <span id="progress-text">0%</span>
         </div>
     </header>
 
     <main id="app">
-        <div id="loading" class="hidden">Yükleniyor...</div>
-        <div id="empty-state" class="empty-state">
-            <p>Görüntülenecek veri yok. Lütfen bir Excel dosyası yükleyin.</p>
-        </div>
-
-        <!-- Data Container -->
-        <div id="data-container" class="data-container hidden">
-            <!-- Table View (Desktop) -->
-            <div class="table-wrapper">
+        <div id="view-dashboard" class="view-section">
+            <div id="data-container" class="table-wrapper virtual-scroll-container">
                 <table id="main-table">
-                    <thead>
-                        <!-- Headers will be injected here -->
-                    </thead>
-                    <tbody>
-                        <!-- Rows will be injected here -->
-                    </tbody>
+                    <thead><tr id="table-header-row"></tr></thead>
+                    <tbody id="table-body"></tbody>
                 </table>
             </div>
+            <div id="card-list" class="card-list"></div>
+            <div id="pagination-controls" class="pagination"></div>
+        </div>
 
-            <!-- Card View (Mobile) -->
-            <div id="card-list" class="card-list">
-                <!-- Cards will be injected here -->
+        <div id="view-aircraft" class="view-section hidden">
+            <div class="mapping-container">
+                <h3>Uçak WO Eşleştirme Listesi</h3>
+                <div class="mapping-form">
+                    <input type="text" id="map-wo" placeholder="WO Numarası">
+                    <input type="text" id="map-ac" placeholder="Uçak İsmi">
+                    <button class="btn btn-primary" onclick="App.addMapping()">Ekle/Güncelle</button>
+                </div>
+                <div class="table-wrapper">
+                    <table>
+                        <thead><tr><th>WO</th><th>Uçak İsmi</th><th>İşlem</th></tr></thead>
+                        <tbody id="mapping-body"></tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </main>
 
-    <!-- Custom JS -->
     <script src="js/storage.js"></script>
     <script src="js/ui.js"></script>
     <script src="js/app.js"></script>
 </body>
-
 </html>
