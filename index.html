@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NRC Dashboard Pro</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <title>NRC Maintenance Dashboard</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -13,70 +12,74 @@
 </head>
 <body>
     <header>
-        <div class="header-top">
-            <div class="stats-panel">
-                <div class="stat-item open">OPEN: <span id="stat-open">0</span></div>
-                <div class="stat-item closed">CLOSED: <span id="stat-closed">0</span></div>
-                <div class="stat-item defer">DEFER: <span id="stat-defer">0</span></div>
+        <div class="top-nav">
+            <div class="stats-container">
+                <div class="stat-box open">OPEN: <span id="stat-open">0</span></div>
+                <div class="stat-box closed">CLOSED: <span id="stat-closed">0</span></div>
+                <div class="stat-box defer">DEFER: <span id="stat-defer">0</span></div>
             </div>
-            <div class="import-info">Son İçe Aktarma: <span id="last-import-time">-</span></div>
+            <div class="import-date">Son Güncelleme: <span id="last-import-time">-</span></div>
         </div>
 
-        <div class="header-content">
-            <nav class="view-tabs">
-                <button class="btn-tab active" onclick="App.switchView('dashboard')">Dashboard</button>
-                <button class="btn-tab" onclick="App.switchView('aircraft')">Uçak Eşleştirme</button>
-            </nav>
-            <div class="controls">
+        <div class="main-header">
+            <div class="nav-tabs">
+                <button class="tab-link active" onclick="App.switchPage('dashboard')">Dashboard</button>
+                <button class="tab-link" onclick="App.switchPage('mapping')">Uçak Eşleştirme</button>
+            </div>
+            <div class="actions">
                 <label for="fileInput" class="btn btn-primary">📂 Excel Yükle</label>
                 <input type="file" id="fileInput" accept=".xlsx,.xls" hidden>
             </div>
         </div>
 
-        <div class="search-section">
-            <div class="search-bar">
-                <input type="text" id="search" placeholder="Hızlı Ara (Debounced)...">
-            </div>
-            <div id="mobile-filters" class="mobile-filters-container">
-                <select id="filter-aircraft"><option value="">Tüm Uçaklar</option></select>
-                <select id="filter-dept"><option value="">Tüm Bölümler</option></select>
+        <div class="search-and-filter">
+            <input type="text" id="search" placeholder="Hızlı Ara (WO, Task, Not...)" class="search-input">
+            <div class="mobile-only-filters">
+                <select id="mobile-ac-filter"><option value="">Tüm Uçaklar</option></select>
+                <select id="mobile-dept-filter">
+                    <option value="">Tüm Bölümler</option>
+                    <option value="Cabin">Cabin</option>
+                    <option value="Ortak Cabin">Ortak Cabin</option>
+                    <option value="AVI">AVI</option>
+                    <option value="MEC">MEC</option>
+                    <option value="STR">STR</option>
+                    <option value="OTHER">OTHER</option>
+                </select>
             </div>
         </div>
 
         <div id="progress-container" class="progress-container hidden">
-            <div class="progress-bar"><div id="progress-fill" class="progress-fill"></div></div>
+            <div class="progress-bar"><div id="progress-fill"></div></div>
             <span id="progress-text">0%</span>
         </div>
     </header>
 
-    <main id="app">
-        <div id="view-dashboard" class="view-section">
-            <div id="data-container" class="table-wrapper virtual-scroll-container">
+    <main id="app-content">
+        <section id="page-dashboard">
+            <div class="table-container">
                 <table id="main-table">
-                    <thead><tr id="table-header-row"></tr></thead>
+                    <thead id="table-head"></thead>
                     <tbody id="table-body"></tbody>
                 </table>
             </div>
             <div id="card-list" class="card-list"></div>
-            <div id="pagination-controls" class="pagination"></div>
-        </div>
+            <div class="pagination-container" id="pagination"></div>
+        </section>
 
-        <div id="view-aircraft" class="view-section hidden">
-            <div class="mapping-container">
-                <h3>Uçak WO Eşleştirme Listesi</h3>
-                <div class="mapping-form">
+        <section id="page-mapping" class="hidden">
+            <div class="mapping-card">
+                <h3>Uçak WO Eşleştirme</h3>
+                <div class="mapping-inputs">
                     <input type="text" id="map-wo" placeholder="WO Numarası">
                     <input type="text" id="map-ac" placeholder="Uçak İsmi">
-                    <button class="btn btn-primary" onclick="App.addMapping()">Ekle/Güncelle</button>
+                    <button class="btn btn-primary" onclick="App.saveMapping()">Kaydet</button>
                 </div>
-                <div class="table-wrapper">
-                    <table>
-                        <thead><tr><th>WO</th><th>Uçak İsmi</th><th>İşlem</th></tr></thead>
-                        <tbody id="mapping-body"></tbody>
-                    </table>
-                </div>
+                <table class="mapping-table">
+                    <thead><tr><th>WO</th><th>Uçak</th><th>İşlem</th></tr></thead>
+                    <tbody id="mapping-body"></tbody>
+                </table>
             </div>
-        </div>
+        </section>
     </main>
 
     <script src="js/storage.js"></script>
