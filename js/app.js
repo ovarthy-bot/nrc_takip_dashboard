@@ -5,40 +5,83 @@ const App = {
     state: {
         allData: [],
         filteredData: [],
-        headers: [], // Headers are now fixed or derived from connection, but we keep structure
+        headers: [],
         filters: {},
         sort: {
             colIndex: -1,
             asc: true
-        }
+        },
+        pagination: {
+            pageSize: 50,
+            currentPage: 1
+        },
+        aircraftMap: {}, // WO -> Plane Name
+        meta: {} // Last Import time etc.
     },
 
     init: async function () {
-        console.log('App initialized (Firebase)');
+        console.log('App initialized (Firebase + Opts)');
         this.bindEvents();
         await this.loadData();
     },
 
     bindEvents: function () {
         document.getElementById('fileInput').addEventListener('change', (e) => this.handleFile(e));
-        document.getElementById('search').addEventListener('input', (e) => this.handleSearch(e));
-        document.getElementById('clearDataBtn').addEventListener('click', () => this.clearData());
+        document.getElementById('search').addEventListener('input', this.debounce((e) => this.handleSearch(e), 300));
+
+        // Aircraft Map Modal
+        document.getElementById('aircraftMapBtn').addEventListener('click', () => {
+            UI.renderMapList(this.state.aircraftMap);
+            UI.openModal();
+        });
+        document.querySelector('.close-modal').addEventListener('click', () => UI.closeModal());
+        document.getElementById('save-map-btn').addEventListener('click', () => this.saveAircraftMapping());
+
+        // Dept Tabs
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                this.filterData('dept', e.target.dataset.dept);
+            });
+        });
+
+        // Pagination
+        // (Handled in UI.renderPagination callbacks, creating global access)
+    },
+
+    // Utility: Debounce
+    debounce: function (func, wait) {
+        let timeout;
+        return (...args) => {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func.apply(this, args), wait);
+        };
     },
 
     loadData: async function () {
         UI.toggleLoading(true);
-        const data = await Storage.fetchAll();
+
+        // Parallel Fetch
+        const [data, map, meta] = await Promise.all([
+            Storage.fetchAll(),
+            Storage.fetchAircraftMap(),
+            Storage.getMetadata()
+        ]);
+
+        this.state.aircraftMap = map || {};
+        this.state.meta = meta || {};
+        UI.updateLastImport(this.state.meta.timestamp);
 
         if (data && data.length > 0) {
             this.state.allData = data;
-
-            // Reconstruct Headers (Assumption: all rows share same structure)
-            // If data is empty, we wait for import. 
-            // We hardcode headers to be safe or pick from first row if valid.
-            // Based on previous logic, we know the columns.
             this.state.headers = ["WO", "Task Card", "Konu", "Ucak Tipi", "Tarih", "Bolge", "Durum", "Planlanan(MH)", "Gerceklesenn(MH)", "Oran %", "Not"];
 
+            // Check for Department Column existence in logic?
+            // "Bolge" is index 5. We use this for tabs.
+
             this.state.filteredData = data;
+            this.calculateStats();
             this.render();
         } else {
             this.state.allData = [];
@@ -48,14 +91,33 @@ const App = {
         UI.toggleLoading(false);
     },
 
-    saveData: async function () {
-        // With Firestore, we save individually or in batches during import/update.
-        // Global "Save everything" is not efficient or needed here.
-        console.log("Auto-save is handled by specific actions (Import/Update)");
+    calculateStats: function () {
+        // Stats: OPEN, CLOSED, DEFER based on "Durum" (Index 6)
+        let open = 0, closed = 0, defer = 0;
+        this.state.allData.forEach(row => {
+            const status = String(row[6]).toUpperCase();
+            if (status.includes('OPEN')) open++;
+            else if (status.includes('CLOSED')) closed++;
+            else if (status.includes('DEFER')) defer++;
+        });
+        UI.updateStats(open, closed, defer);
     },
 
-    clearData: function () {
-        alert("Firestore üzerinden veri silme işlemi şu an devre dışı (Admin yetkisi gerektirir).");
+    saveAircraftMapping: async function () {
+        const woInput = document.getElementById('map-wo');
+        const planeInput = document.getElementById('map-plane');
+        const wo = woInput.value.trim();
+        const plane = planeInput.value.trim();
+
+        if (!wo || !plane) return alert('Lütfen bilgileri giriniz.');
+
+        await Storage.saveAircraftMap(wo, plane);
+        this.state.aircraftMap[wo] = plane; // Update local
+
+        woInput.value = '';
+        planeInput.value = '';
+        UI.renderMapList(this.state.aircraftMap);
+        this.render(); // Re-render table to show new plane names
     },
 
     handleFile: function (e) {
@@ -66,7 +128,6 @@ const App = {
         UI.toggleProgress(true);
         UI.updateProgress(0, 'Dosya okunuyor...');
 
-        // Short timeout to allow UI to render
         setTimeout(() => {
             const reader = new FileReader();
             reader.onload = (event) => {
@@ -97,25 +158,19 @@ const App = {
         }
 
         const headerRow = rows[0];
+        // Validation: Check if critical columns exist
+        // Expected: WO(0), TaskCard(1), Status(6) at least?
+        // We rely on index. Simple check: length > 10?
+        if (rows[0].length < 10) {
+            alert('Hatalı Format: Eksik sütunlar. Lütfen doğru Excel dosyasını yükleyin.');
+            UI.toggleLoading(false);
+            UI.toggleProgress(false);
+            return;
+        }
+
         const columns = [0, 1, 5, 6, 12, 7, 8, 15, 16]; // Indices to keep
 
         // 1. Prepare Data for Batch Save
-        // We will process all rows locally to format them, then send to Storage.saveBatch
-        const totalRows = rows.length - 1;
-
-        // This array will hold the NEW or UPDATED objects
-        // In Firestore logic, we just send the row data.
-        // The merging logic happens in Storage.saveBatch (using merge: true)? 
-        // Wait, current Storage.saveBatch uses set({row: row}, {merge:true}). 
-        // NOTE: set with merge: true merges fields. 
-        // If we send `row: [a,b,c]`, it REPLACES the `row` field in the document.
-        // It does NOT merge the array contents.
-        // So we MUST preserve the Note column LOCALLY before sending if we want to keep it.
-        // OR we need to fetch existing data first?
-        // We already have `this.state.allData` loaded! 
-
-        // Let's use the local state to merge Notes, then send the FULL row to Firestore.
-
         const existingMap = new Map();
         this.state.allData.forEach(row => {
             const key = `${row[0]}_${row[1]}`;
@@ -124,12 +179,6 @@ const App = {
 
         const rowsToSave = [];
 
-        // Chunk processing loop for UI responsiveness (still useful for local processing)
-        // But for Firestore, we'll collect everything then batch send.
-
-        let processedCount = 0;
-
-        // We do this in a non-async loop for speed, then async save
         for (let i = 1; i < rows.length; i++) {
             const row = rows[i];
             const mappedRow = columns.map((colIdx, idx) => {
@@ -168,47 +217,31 @@ const App = {
             rowsToSave.push(mappedRow);
         }
 
-        // Now we have rowsToSave. Send to Firestore.
-        // We can do this with progress updates.
-
         UI.updateProgress(50, 'Veriler hazırlanıyor...');
 
-        await Storage.saveBatch(rowsToSave); // This implementation should handle chunking internally or we do it here.
-        // My Storage implementation handles batching.
+        await Storage.saveBatch(rowsToSave);
+
+        // Save Metadata
+        const now = new Date().toLocaleString('tr-TR');
+        await Storage.saveMetadata({ timestamp: now });
+        UI.updateLastImport(now);
 
         UI.updateProgress(100, 'Tamamlandı');
 
-        // Reload fresh data
-        await this.loadData();
-
-        alert('İşlem tamamlandı!');
-        UI.toggleProgress(false);
-    },
-
-    finalizeProcess: function (dataMap, headers) {
-        // Convert Map values back to Array
-        const finalData = Array.from(dataMap.values());
-
-        this.state.headers = headers;
-        this.state.allData = finalData;
-        this.state.filteredData = finalData; // Reset filter on new import? Or re-apply?
-        // Let's reset filter for now to show all data (or just the updated set).
-
-        this.saveData();
+        // Optimized Update: Don't fetchAgain. Use rowsToSave.
+        this.state.allData = rowsToSave;
+        this.state.filteredData = rowsToSave;
+        this.calculateStats();
         this.render();
 
-        UI.toggleLoading(false);
-        UI.toggleProgress(false);
         alert('İşlem tamamlandı!');
+        UI.toggleProgress(false);
     },
 
     updateNote: async function (row, note) {
-        // Update local state first for responsiveness
         const noteIndex = 10;
         while (row.length <= noteIndex) row.push("");
         row[noteIndex] = note;
-
-        // Send to Firestore
         await Storage.updateRow(row);
     },
 
@@ -228,11 +261,15 @@ const App = {
         this.filterData('global', query);
     },
 
-    filterData: function (columnIndex, value) {
-        if (columnIndex === 'global') {
+    filterData: function (type, value) {
+        this.state.pagination.currentPage = 1; // Reset to page 1 on filter
+
+        if (type === 'global') {
             this.state.filters.global = value;
+        } else if (type === 'dept') {
+            this.state.filters.dept = value;
         } else {
-            this.state.filters[columnIndex] = value;
+            this.state.filters[type] = value;
         }
         this.applyFilters();
     },
@@ -241,24 +278,37 @@ const App = {
         this.state.filteredData = this.state.allData.filter(row => {
             // Global Search
             if (this.state.filters.global) {
-                const globalMatch = row.some(cell =>
-                    String(cell).toLowerCase().includes(this.state.filters.global)
-                );
+                const globalMatch = row.some((cell, i) => {
+                    // Check visible data + Note (Index 10)
+                    // Also check mapped Aircraft Name?
+                    if (i === 0) { // Check WO and Aircraft Name
+                        const plane = this.state.aircraftMap[cell] || "";
+                        if (String(plane).toLowerCase().includes(this.state.filters.global)) return true;
+                    }
+                    return String(cell).toLowerCase().includes(this.state.filters.global);
+                });
                 if (!globalMatch) return false;
             }
 
-            // Column Filters
+            // Department Filter (Index 5: Bolge)
+            if (this.state.filters.dept) {
+                const rowDept = String(row[5]).toUpperCase();
+                const filterDept = this.state.filters.dept;
+                // Strict equality or contains? Usually distinct values.
+                if (rowDept !== filterDept) return false;
+            }
+
+            // Other filters
             for (const [colIdx, filterVal] of Object.entries(this.state.filters)) {
-                if (colIdx === 'global' || filterVal === "") continue;
+                if (['global', 'dept'].includes(colIdx) || filterVal === "") continue;
                 if (String(row[colIdx]) !== String(filterVal)) return false;
             }
 
             return true;
         });
 
-        // Re-apply sort if active
         if (this.state.sort.colIndex !== -1) {
-            this.sortData(this.state.sort.colIndex, false); // false = don't toggle, just sort
+            this.sortData(this.state.sort.colIndex, false);
         } else {
             this.render();
         }
@@ -276,15 +326,18 @@ const App = {
 
         const { colIndex: sortIdx, asc } = this.state.sort;
 
+        // Optimization: Sort entire dataset or just filtered?
+        // We must sort filtered data.
+        // Pagination applies AFTER sort.
+
         this.state.filteredData.sort((a, b) => {
             let valA = a[sortIdx];
             let valB = b[sortIdx];
 
-            // Specific Date Sort for Index 4 (DD.MM.YYYY)
+            // Date Sort (Index 4)
             if (sortIdx === 4) {
                 const parseDate = (d) => {
                     if (!d) return 0;
-                    // Check if it's already a string date DD.MM.YYYY
                     if (typeof d === 'string' && d.includes('.')) {
                         const p = d.split('.');
                         return new Date(p[2], p[1] - 1, p[0]).getTime();
@@ -294,7 +347,6 @@ const App = {
                 return asc ? parseDate(valA) - parseDate(valB) : parseDate(valB) - parseDate(valA);
             }
 
-            // Numeric Check
             const numA = parseFloat(valA);
             const numB = parseFloat(valB);
 
@@ -302,7 +354,6 @@ const App = {
                 return asc ? numA - numB : numB - numA;
             }
 
-            // String Sort
             const strA = String(valA).toLowerCase();
             const strB = String(valB).toLowerCase();
 
@@ -314,16 +365,36 @@ const App = {
         this.render();
     },
 
+    changePage: function (page) {
+        if (page < 1) return;
+        const totalPages = Math.ceil(this.state.filteredData.length / this.state.pagination.pageSize);
+        if (page > totalPages) return;
+
+        this.state.pagination.currentPage = page;
+        this.render();
+    },
+
     render: function () {
-        UI.showData(this.state.headers, this.state.filteredData);
+        // Pagination Logic
+        const { currentPage, pageSize } = this.state.pagination;
+        const start = (currentPage - 1) * pageSize;
+        const end = start + pageSize;
+        const pageData = this.state.filteredData.slice(start, end);
+
+        const totalItems = this.state.filteredData.length;
+        const totalPages = Math.ceil(totalItems / pageSize);
+
+        UI.showData(this.state.headers, pageData, {
+            currentPage,
+            totalPages,
+            totalItems
+        });
     }
 };
 
-// Export and Attach to Window
 window.App = App;
 export default App;
 
-// Start App
 document.addEventListener('DOMContentLoaded', () => {
     App.init();
 });
