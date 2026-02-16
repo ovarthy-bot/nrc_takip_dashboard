@@ -1,51 +1,128 @@
+// Main Application Logic with Firebase, Pagination, Debouncing, and Filters
+import Storage from './storage.js';
+import UI from './ui.js';
+
 const App = {
     state: {
         allData: [],
         filteredData: [],
         headers: [],
-        filters: {},
+        aircraftMapping: {}, // WO -> Aircraft Name
+        filters: {
+            global: '',
+            aircraft: '',
+            departments: [] // Selected departments
+        },
         sort: {
             colIndex: -1,
             asc: true
-        }
+        },
+        pagination: {
+            currentPage: 1,
+            itemsPerPage: 100,
+            totalPages: 1
+        },
+        stats: {
+            open: 0,
+            closed: 0,
+            defer: 0
+        },
+        lastImportTime: null
     },
 
-    init: function () {
+    init: async function () {
         console.log('App initialized');
         this.bindEvents();
-        this.loadData();
+        await this.loadData();
     },
 
     bindEvents: function () {
         document.getElementById('fileInput').addEventListener('change', (e) => this.handleFile(e));
-        document.getElementById('search').addEventListener('input', (e) => this.handleSearch(e));
-        document.getElementById('clearDataBtn').addEventListener('click', () => this.clearData());
+
+        // Debounced search (300ms delay)
+        let searchTimeout;
+        document.getElementById('search').addEventListener('input', (e) => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => this.handleSearch(e), 300);
+        });
+
+        // Aircraft filter
+        document.getElementById('aircraft-filter').addEventListener('change', (e) => {
+            this.filterData('aircraft', e.target.value);
+        });
+
+        // Department checkboxes
+        document.querySelectorAll('.dept-checkbox').forEach(checkbox => {
+            checkbox.addEventListener('change', () => this.handleDepartmentFilter());
+        });
+
+        // Pagination controls
+        document.getElementById('prev-page').addEventListener('click', () => this.changePage(-1));
+        document.getElementById('next-page').addEventListener('click', () => this.changePage(1));
+        document.getElementById('items-per-page').addEventListener('change', (e) => {
+            this.state.pagination.itemsPerPage = parseInt(e.target.value);
+            this.state.pagination.currentPage = 1;
+            this.render();
+        });
     },
 
     loadData: async function () {
+        UI.toggleLoading(true);
+
+        // Load main data
         const saved = await Storage.load();
         if (saved) {
             this.state.allData = saved.data;
             this.state.headers = saved.headers;
 
-            // Migration: Ensure "Not" column exists
+            // Migration: Ensure required columns exist
             if (!this.state.headers.includes("Not")) {
                 this.state.headers.push("Not");
-                // Add empty note to all rows
                 this.state.allData.forEach(row => {
-                    // Ensure row handles the new column index (10)
-                    // Current length should be 10 (0..9). 
-                    // processData pushes 9 elements (0..8) + 1 percentage = 10 elements.
-                    // So we push 1 more.
                     row.push("");
                 });
-                await this.saveData(); // Save migrated data
+                await this.saveData();
                 console.log("Data migrated: Added 'Not' column.");
             }
 
-            this.state.filteredData = this.state.allData; // Initial view
-            this.render();
+            // Ensure Aircraft Name column exists (index 0)
+            if (!this.state.headers.includes("Uçak İsmi")) {
+                this.state.headers.unshift("Uçak İsmi");
+                this.state.allData.forEach(row => {
+                    row.unshift("");
+                });
+                await this.saveData();
+                console.log("Data migrated: Added 'Uçak İsmi' column.");
+            }
+
+            // Ensure Department column exists
+            if (!this.state.headers.includes("Bölüm")) {
+                // Insert after Aircraft Name (index 1)
+                this.state.headers.splice(1, 0, "Bölüm");
+                this.state.allData.forEach(row => {
+                    row.splice(1, 0, "");
+                });
+                await this.saveData();
+                console.log("Data migrated: Added 'Bölüm' column.");
+            }
         }
+
+        // Load aircraft mapping
+        this.state.aircraftMapping = await Storage.loadMapping();
+
+        // Apply aircraft mapping to data
+        this.applyAircraftMapping();
+
+        // Load metadata (import time, stats)
+        const metadata = await Storage.loadMetadata();
+        if (metadata) {
+            this.state.lastImportTime = metadata.importTime;
+        }
+
+        this.state.filteredData = this.state.allData;
+        this.calculateStats();
+        this.render();
+        UI.toggleLoading(false);
     },
 
     saveData: async function () {
@@ -55,14 +132,34 @@ const App = {
         });
     },
 
-    clearData: async function () {
-        if (confirm('Verileri temizlemek istediğinize emin misiniz?')) {
-            await Storage.clear();
-            this.state.allData = [];
-            this.state.filteredData = [];
-            this.state.headers = [];
-            this.render();
+    applyAircraftMapping: function () {
+        // Apply aircraft names based on WO number
+        // WO is at index 1 (after Aircraft Name column)
+        this.state.allData.forEach(row => {
+            const wo = row[1]; // WO column
+            if (wo && this.state.aircraftMapping[wo]) {
+                row[0] = this.state.aircraftMapping[wo]; // Set Aircraft Name
+            }
+        });
+    },
+
+    validateExcelFile: function (json) {
+        // Validate Excel file structure
+        if (!json || json.length < 2) {
+            throw new Error('Dosya boş veya geçersiz format!');
         }
+
+        const headerRow = json[0];
+        const requiredColumns = [0, 1, 5, 6, 7, 8, 12, 15, 16]; // Required column indices
+
+        // Check if all required columns exist
+        for (const colIdx of requiredColumns) {
+            if (colIdx >= headerRow.length) {
+                throw new Error(`Geçersiz dosya yapısı! Beklenen sütun sayısı: ${Math.max(...requiredColumns) + 1}, Bulunan: ${headerRow.length}`);
+            }
+        }
+
+        return true;
     },
 
     handleFile: function (e) {
@@ -73,20 +170,22 @@ const App = {
         UI.toggleProgress(true);
         UI.updateProgress(0, 'Dosya okunuyor...');
 
-        // Short timeout to allow UI to render
         setTimeout(() => {
             const reader = new FileReader();
-            reader.onload = (event) => {
+            reader.onload = async (event) => {
                 try {
                     const data = new Uint8Array(event.target.result);
                     const workbook = XLSX.read(data, { type: 'array' });
                     const sheet = workbook.Sheets[workbook.SheetNames[0]];
                     const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
 
-                    this.processDataChunked(json);
+                    // Validate file structure
+                    this.validateExcelFile(json);
+
+                    await this.processDataChunked(json);
                 } catch (err) {
                     console.error(err);
-                    alert('Dosya okunurken hata oluştu!');
+                    alert('Dosya işlenirken hata oluştu: ' + err.message);
                     UI.toggleLoading(false);
                     UI.toggleProgress(false);
                 }
@@ -95,35 +194,19 @@ const App = {
         }, 100);
     },
 
-    processDataChunked: function (rows) {
-        if (!rows || rows.length < 2) {
-            alert('Dosya boş veya geçersiz format!');
-            UI.toggleLoading(false);
-            UI.toggleProgress(false);
-            return;
-        }
-
+    processDataChunked: async function (rows) {
         const headerRow = rows[0];
         const columns = [0, 1, 5, 6, 12, 7, 8, 15, 16]; // Indices to keep
 
-        // 1. Prepare Headers (once)
-        // If we already have headers (from previous load), keep them. 
-        // But we should ensure "Not" column exists.
+        // Prepare Headers
+        let headers = ["Uçak İsmi", "Bölüm"]; // First two columns
+        headers = headers.concat(columns.map(i => headerRow[i] || ""));
+        headers.push("Oran %");
+        headers.push("Not");
 
-        let headers = this.state.headers;
-        if (headers.length === 0) {
-            headers = columns.map(i => headerRow[i] || "");
-            headers.push("Oran %");
-            headers.push("Not"); // New Note Column
-        }
-
-        // 2. Index Existing Data for Merging
-        // Map: "WO_TaskCard" -> Row Object (or Array)
-        // We use a Map to store references to existing rows.
+        // Index Existing Data for Merging
         const existingMap = new Map();
-
-        // Key generation helper
-        const getKey = (row) => `${row[0]}_${row[1]}`; // WO + TaskCard
+        const getKey = (row) => `${row[2]}_${row[3]}`; // WO + TaskCard (adjusted for new columns)
 
         this.state.allData.forEach(row => {
             const key = getKey(row);
@@ -132,28 +215,20 @@ const App = {
 
         const totalRows = rows.length - 1;
         let currentIndex = 1;
-        const CHUNK_SIZE = 500; // Process 500 rows at a time
+        const CHUNK_SIZE = 500;
 
         const processChunk = () => {
             const chunkEnd = Math.min(currentIndex + CHUNK_SIZE, rows.length);
 
             for (let i = currentIndex; i < chunkEnd; i++) {
                 const row = rows[i];
+
                 // Map to our structure
                 const mappedRow = columns.map((colIdx, idx) => {
                     let cell = row[colIdx];
                     if (cell === undefined || cell === null) cell = "";
 
-                    // Date formatting for visual column 4 (originally index 5 in columns array? No, index 4 in result array is index 12 in source? Wait.)
-                    // columns = [0, 1, 5, 6, 12, ...] -> index 4 is 12?
-                    // 0->0, 1->1, 2->5, 3->6, 4->12. Yes. 
-                    // Wait, original code said: "if (i === 4 && typeof cell === 'number')"
-                    // Let's verify mapping:
-                    // 0: WO
-                    // 1: Task Card
-                    // 2: ?
-                    // 3: ?
-                    // 4: ? (Date?)
+                    // Date formatting for column index 4 in mapped data
                     if (idx === 4 && typeof cell === 'number') {
                         cell = this.excelDateToJSDate(cell);
                     }
@@ -161,8 +236,8 @@ const App = {
                 });
 
                 // Calculate Percentage
-                let val1 = parseFloat(mappedRow[7]); // Index 7 in mapped (source 15)
-                let val2 = parseFloat(mappedRow[8]); // Index 8 in mapped (source 16)
+                let val1 = parseFloat(mappedRow[7]);
+                let val2 = parseFloat(mappedRow[8]);
 
                 if (isNaN(val1)) val1 = 0;
                 if (isNaN(val2)) val2 = 0;
@@ -171,53 +246,41 @@ const App = {
                 if (val1 !== 0) {
                     percentage = (val2 / val1) * 100;
                 }
-                mappedRow.push(percentage.toFixed(2)); // Index 9
+                mappedRow.push(percentage.toFixed(2));
+
+                // Add Aircraft Name and Department at the beginning
+                const wo = mappedRow[0]; // WO is first in mappedRow
+                const aircraftName = this.state.aircraftMapping[wo] || "";
+                const department = ""; // Will be set by user
+
+                const finalRow = [aircraftName, department, ...mappedRow];
 
                 // Merge Logic
-                const key = getKey(mappedRow);
+                const key = getKey(finalRow);
                 const existingRow = existingMap.get(key);
 
                 if (existingRow) {
-                    // Update existing row data BUT preserve Note
-                    // Expected structure: [...data, percentage, note]
-                    // existingRow might differ if we update columns, but assuming consistent schema.
-                    const existingNote = existingRow[10] || ""; // Index 10 is Note
-                    mappedRow.push(existingNote);
-
-                    // Replace in Map (effectively updating the dataset definition)
-                    // However, allData is an Array. We need to reconstruct it or update it in place.
-                    // Since we are iterating *new* file, we might have rows in *old* data that are NOT in *new* file.
-                    // The requirement says: "Import edilen veri daha önce uygulama içerisinde bulunamadıysa en sona bu veriler eklensin."
-                    // And "değişen verilerin eskisi güncellensin."
-                    // So we implicitly keep old rows that are NOT in the new file? 
-                    // Or do we only keep the union? usually "import" implies adding/updating, not replacing whole dataset (unless it was a clean state).
-                    // But if we want to update *existing* rows, we should modify the object ref if possible, or build a new list.
-
-                    // Strategy:
-                    // 1. We have `existingMap` with all current data.
-                    // 2. We process new rows.
-                    // 3. If match -> Update the entry in `existingMap` (preserving note).
-                    // 4. If new -> Add to `existingMap` (or a separate list of new items).
-                    // 5. Finally, flatten Map values to Array.
-
-                    existingMap.set(key, mappedRow);
+                    // Update existing row BUT preserve Note and Department
+                    const existingNote = existingRow[existingRow.length - 1] || "";
+                    const existingDept = existingRow[1] || "";
+                    finalRow[1] = existingDept; // Preserve department
+                    finalRow.push(existingNote);
+                    existingMap.set(key, finalRow);
                 } else {
                     // New Row
-                    mappedRow.push(""); // Empty Note
-                    existingMap.set(key, mappedRow);
+                    finalRow.push(""); // Empty Note
+                    existingMap.set(key, finalRow);
                 }
             }
 
             currentIndex = chunkEnd;
 
-            // Update UI
             const percent = Math.round(((currentIndex - 1) / totalRows) * 100);
             UI.updateProgress(percent, `%${percent} İşlendi`);
 
             if (currentIndex < rows.length) {
                 requestAnimationFrame(processChunk);
             } else {
-                // Finished
                 this.finalizeProcess(existingMap, headers);
             }
         };
@@ -226,15 +289,21 @@ const App = {
     },
 
     finalizeProcess: async function (dataMap, headers) {
-        // Convert Map values back to Array
         const finalData = Array.from(dataMap.values());
 
         this.state.headers = headers;
         this.state.allData = finalData;
-        this.state.filteredData = finalData; // Reset filter on new import? Or re-apply?
-        // Let's reset filter for now to show all data (or just the updated set).
+        this.state.filteredData = finalData;
+        this.state.lastImportTime = new Date().toISOString();
 
+        // Save to Firebase
         await this.saveData();
+        await Storage.saveMetadata({
+            importTime: this.state.lastImportTime
+        });
+
+        this.calculateStats();
+        this.populateAircraftFilter();
         this.render();
 
         UI.toggleLoading(false);
@@ -243,17 +312,15 @@ const App = {
     },
 
     updateNote: async function (row, note) {
-        // row is a reference to the array in allData
-        // We find the note column index.
-        const noteIndex = 10; // Fixed based on our logic (9 cols + 1 pct + 1 note)
-        // Ensure row has space
-        while (row.length <= noteIndex) {
-            row.push("");
-        }
+        const noteIndex = row.length - 1;
         row[noteIndex] = note;
         await this.saveData();
-        // No need to re-render entire table if just updating memory, 
-        // but if search depends on it, we might need to if we were filtering by note content (not yet implemented in search though).
+    },
+
+    updateDepartment: async function (row, department) {
+        row[1] = department; // Department is at index 1
+        await this.saveData();
+        this.applyFilters(); // Re-apply filters
     },
 
     excelDateToJSDate: function (serial) {
@@ -272,11 +339,20 @@ const App = {
         this.filterData('global', query);
     },
 
-    filterData: function (columnIndex, value) {
-        if (columnIndex === 'global') {
+    handleDepartmentFilter: function () {
+        const selected = [];
+        document.querySelectorAll('.dept-checkbox:checked').forEach(cb => {
+            selected.push(cb.value);
+        });
+        this.state.filters.departments = selected;
+        this.applyFilters();
+    },
+
+    filterData: function (filterType, value) {
+        if (filterType === 'global') {
             this.state.filters.global = value;
-        } else {
-            this.state.filters[columnIndex] = value;
+        } else if (filterType === 'aircraft') {
+            this.state.filters.aircraft = value;
         }
         this.applyFilters();
     },
@@ -291,19 +367,29 @@ const App = {
                 if (!globalMatch) return false;
             }
 
-            // Column Filters
-            for (const [colIdx, filterVal] of Object.entries(this.state.filters)) {
-                if (colIdx === 'global' || filterVal === "") continue;
-                if (String(row[colIdx]) !== String(filterVal)) return false;
+            // Aircraft Filter
+            if (this.state.filters.aircraft && row[0] !== this.state.filters.aircraft) {
+                return false;
+            }
+
+            // Department Filter
+            if (this.state.filters.departments.length > 0) {
+                if (!this.state.filters.departments.includes(row[1])) {
+                    return false;
+                }
             }
 
             return true;
         });
 
+        // Reset to page 1 when filters change
+        this.state.pagination.currentPage = 1;
+
         // Re-apply sort if active
         if (this.state.sort.colIndex !== -1) {
-            this.sortData(this.state.sort.colIndex, false); // false = don't toggle, just sort
+            this.sortData(this.state.sort.colIndex, false);
         } else {
+            this.calculateStats();
             this.render();
         }
     },
@@ -324,11 +410,10 @@ const App = {
             let valA = a[sortIdx];
             let valB = b[sortIdx];
 
-            // Specific Date Sort for Index 4 (DD.MM.YYYY)
-            if (sortIdx === 4) {
+            // Date Sort for Index 6 (adjusted for new columns)
+            if (sortIdx === 6) {
                 const parseDate = (d) => {
                     if (!d) return 0;
-                    // Check if it's already a string date DD.MM.YYYY
                     if (typeof d === 'string' && d.includes('.')) {
                         const p = d.split('.');
                         return new Date(p[2], p[1] - 1, p[0]).getTime();
@@ -358,12 +443,69 @@ const App = {
         this.render();
     },
 
+    calculateStats: function () {
+        // Status column is at index 8 (adjusted for new columns)
+        const statusIndex = 8;
+
+        this.state.stats.open = 0;
+        this.state.stats.closed = 0;
+        this.state.stats.defer = 0;
+
+        this.state.filteredData.forEach(row => {
+            const status = String(row[statusIndex]).toUpperCase();
+            if (status.includes('OPEN')) {
+                this.state.stats.open++;
+            } else if (status.includes('CLOSED')) {
+                this.state.stats.closed++;
+            } else if (status.includes('DEFER')) {
+                this.state.stats.defer++;
+            }
+        });
+    },
+
+    populateAircraftFilter: function () {
+        const select = document.getElementById('aircraft-filter');
+        const unique = [...new Set(this.state.allData.map(row => row[0]))].filter(v => v).sort();
+
+        select.innerHTML = '<option value="">Tümü</option>';
+        unique.forEach(aircraft => {
+            const opt = document.createElement('option');
+            opt.value = aircraft;
+            opt.textContent = aircraft;
+            select.appendChild(opt);
+        });
+    },
+
+    changePage: function (direction) {
+        const newPage = this.state.pagination.currentPage + direction;
+        if (newPage >= 1 && newPage <= this.state.pagination.totalPages) {
+            this.state.pagination.currentPage = newPage;
+            this.render();
+        }
+    },
+
     render: function () {
-        UI.showData(this.state.headers, this.state.filteredData);
+        // Calculate pagination
+        const { itemsPerPage, currentPage } = this.state.pagination;
+        const totalItems = this.state.filteredData.length;
+        const totalPages = Math.ceil(totalItems / itemsPerPage);
+        this.state.pagination.totalPages = totalPages;
+
+        // Get current page data
+        const startIdx = (currentPage - 1) * itemsPerPage;
+        const endIdx = startIdx + itemsPerPage;
+        const pageData = this.state.filteredData.slice(startIdx, endIdx);
+
+        UI.showData(this.state.headers, pageData, this.state.stats, this.state.lastImportTime, this.state.pagination);
     }
 };
+
+// Export App for use in UI
+window.App = App;
 
 // Start App
 document.addEventListener('DOMContentLoaded', () => {
     App.init();
 });
+
+export default App;
