@@ -11,9 +11,10 @@ const Storage = {
     save: async function (data) {
         try {
             const docRef = doc(db, this.COLLECTION, this.DOC_MAIN);
+            // Firestore doesn't support nested arrays, so we convert to JSON string
             await setDoc(docRef, {
                 headers: data.headers,
-                data: data.data,
+                dataJson: JSON.stringify(data.data),
                 lastUpdated: new Date().toISOString()
             });
             console.log('Data saved to Firebase');
@@ -32,11 +33,17 @@ const Storage = {
             const docSnap = await getDoc(docRef);
 
             if (docSnap.exists()) {
-                const data = docSnap.data();
+                const firestoreData = docSnap.data();
                 console.log('Data loaded from Firebase');
+
+                // Parse JSON string back to array (new format)
+                const data = firestoreData.dataJson
+                    ? JSON.parse(firestoreData.dataJson)
+                    : (firestoreData.data || []);
+
                 return {
-                    headers: data.headers,
-                    data: data.data
+                    headers: firestoreData.headers,
+                    data: data
                 };
             } else {
                 console.log('No data found in Firebase');
