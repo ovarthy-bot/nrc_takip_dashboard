@@ -41,9 +41,24 @@ const App = {
 
         // Debounced search (300ms delay)
         let searchTimeout;
-        document.getElementById('search').addEventListener('input', (e) => {
+        const searchInput = document.getElementById('search');
+        searchInput.addEventListener('input', (e) => {
             clearTimeout(searchTimeout);
             searchTimeout = setTimeout(() => this.handleSearch(e), 300);
+        });
+
+        // Mobile Keyboard Dismissal
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                searchInput.blur();
+            }
+        });
+
+        // Click outside to dismiss keyboard
+        document.addEventListener('click', (e) => {
+            if (e.target !== searchInput && document.activeElement === searchInput) {
+                searchInput.blur();
+            }
         });
 
         // Aircraft filter
@@ -444,15 +459,20 @@ const App = {
     },
 
     calculateStats: function () {
-        // Status column is at index 8 (adjusted for new columns)
-        const statusIndex = 8;
+        // Find Status column index dynamically
+        const statusHeaderIndex = this.state.headers.findIndex(h =>
+            String(h).toUpperCase().includes('STATUS') ||
+            String(h).toUpperCase() === 'DURUM'
+        );
+
+        const statusIdx = statusHeaderIndex !== -1 ? statusHeaderIndex : 8; // Fallback to 8
 
         this.state.stats.open = 0;
         this.state.stats.closed = 0;
         this.state.stats.defer = 0;
 
         this.state.filteredData.forEach(row => {
-            const status = String(row[statusIndex]).toUpperCase();
+            const status = String(row[statusIdx] || '').toUpperCase();
             if (status.includes('OPEN')) {
                 this.state.stats.open++;
             } else if (status.includes('CLOSED')) {
