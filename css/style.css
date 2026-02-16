@@ -243,35 +243,70 @@ header {
     border-color: var(--primary-color);
 }
 
+/* Timestamp in Header */
+.header-top-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+}
+
+.timestamp {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    opacity: 0.8;
+}
+
 /* Pagination Controls */
 .pagination-controls {
     display: flex;
     justify-content: center;
     align-items: center;
     gap: var(--spacing-md);
-    padding: var(--spacing-lg) 0;
+    padding: var(--spacing-md) 0;
     flex-wrap: wrap;
+    background-color: var(--surface-color);
+    border-top: 1px solid var(--border-color);
 }
 
 .page-info {
     color: var(--text-primary);
     font-weight: 500;
-    min-width: 100px;
-    text-align: center;
+    font-size: 0.9rem;
 }
 
 .items-per-page {
     background-color: var(--input-bg);
     border: 1px solid var(--border-color);
     color: var(--text-primary);
-    padding: 8px 12px;
+    padding: 6px 10px;
     border-radius: var(--border-radius);
     cursor: pointer;
+    font-size: 0.85rem;
 }
 
-.items-per-page:focus {
-    outline: 2px solid var(--primary-color);
-    border-color: transparent;
+/* Mobile Pagination Refinement */
+@media (max-width: 768px) {
+    .pagination-controls {
+        justify-content: space-between;
+        padding: 6px 12px;
+        gap: 6px;
+    }
+
+    .pagination-controls .btn {
+        flex: 1;
+        justify-content: center;
+        max-width: 100px;
+        font-size: 0.8rem;
+        padding: 6px 8px;
+    }
+
+    .page-info {
+        order: -1;
+        width: 100%;
+        margin-bottom: 4px;
+        font-size: 0.85rem;
+    }
 }
 
 
@@ -470,12 +505,110 @@ th select {
         flex-wrap: nowrap;
     }
 
-    .table-wrapper {
+    #main-table {
         display: none;
+        /* Hide main dashboard table on mobile */
+    }
+
+    .table-wrapper {
+        display: block;
+        max-height: none;
+        overflow-x: auto;
+        /* Ensure horizontal scroll for tables that stay */
     }
 
     .card-list {
         display: flex;
+    }
+
+    /* Mapping Page Mobile Refinements (Round 3) */
+    .mapping-container {
+        padding: 5px;
+        max-height: none;
+        width: 100% !important;
+        box-sizing: border-box;
+        margin: 0 !important;
+        border-radius: 0;
+    }
+
+    .mapping-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .mapping-info {
+        font-size: 0.75rem;
+        padding: 8px;
+        margin-bottom: 10px;
+    }
+
+    .manual-entry-section {
+        padding: 10px;
+    }
+
+    .section-header h3 {
+        font-size: 0.9rem;
+    }
+
+    .entry-form {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 5px;
+    }
+
+    .entry-form input,
+    .entry-form select,
+    .entry-form button {
+        width: 100% !important;
+        margin-bottom: 0 !important;
+        font-size: 0.8rem;
+        height: 34px;
+        padding: 6px 10px;
+    }
+
+    .bulk-actions-wrapper {
+        margin-bottom: 10px;
+    }
+
+    .bulk-actions {
+        flex-direction: column;
+        align-items: stretch !important;
+        padding: 6px !important;
+        gap: 6px !important;
+    }
+
+    .bulk-controls {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+    }
+
+    .bulk-label {
+        font-size: 0.75rem !important;
+    }
+
+    .bulk-actions select,
+    .bulk-actions button {
+        width: 100% !important;
+        font-size: 0.75rem !important;
+        height: 32px;
+    }
+
+    .mapping-container table {
+        font-size: 0.7rem;
+        table-layout: fixed;
+        width: 100%;
+    }
+
+    .mapping-container th,
+    .mapping-container td {
+        padding: 4px 2px;
+    }
+
+    .btn-delete {
+        padding: 2px 4px !important;
+        font-size: 0.7rem;
     }
 }
 
@@ -548,88 +681,171 @@ th select {
 /* Mapping Page Styles */
 .mapping-container {
     max-width: 1200px;
-    margin: 0 auto;
+    margin: 20px auto;
+    padding: var(--spacing-md);
+    overflow-y: auto;
+    max-height: calc(100vh - 120px);
+}
+
+.mapping-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    align-items: start;
 }
 
 .mapping-info {
+    grid-column: 1 / -1;
     background-color: var(--surface-color);
     padding: var(--spacing-md);
     border-radius: var(--border-radius);
-    margin-bottom: var(--spacing-lg);
+    margin-bottom: var(--spacing-md);
     border-left: 4px solid var(--primary-color);
 }
 
 .mapping-info p {
     margin: 0;
     color: var(--text-secondary);
+    font-size: 0.95rem;
 }
 
 /* Manual Entry Section */
 .manual-entry-section {
     background-color: var(--surface-color);
-    padding: var(--spacing-md);
+    padding: 20px;
     border-radius: var(--border-radius);
-    margin-bottom: var(--spacing-lg);
     border: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 500px;
 }
 
-.manual-entry-section h3 {
-    margin-top: 0;
-    margin-bottom: var(--spacing-md);
+.section-header {
+    margin-bottom: 15px;
+}
+
+.section-header h3 {
+    margin: 0;
     font-size: 1.1rem;
     color: var(--text-primary);
 }
 
+.bulk-actions-wrapper {
+    margin-bottom: 15px;
+}
+
+.bulk-actions {
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px dashed var(--border-color);
+    border-radius: var(--border-radius);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.bulk-label {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.bulk-controls {
+    display: flex;
+    gap: 10px;
+}
+
+.bulk-controls select {
+    flex: 1;
+}
+
 .entry-form {
     display: flex;
-    gap: var(--spacing-md);
-    align-items: center;
-    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 15px;
 }
 
-.entry-form input {
+.entry-form input,
+.entry-form select {
     flex: 1;
-    min-width: 150px;
-    background-color: var(--input-bg);
-    border: 1px solid var(--border-color);
-    color: var(--text-primary);
-    padding: 10px 14px;
-    border-radius: var(--border-radius);
-}
-
-.aircraft-input {
-    width: 100%;
     background-color: var(--input-bg);
     border: 1px solid var(--border-color);
     color: var(--text-primary);
     padding: 8px 12px;
     border-radius: var(--border-radius);
-    font-size: 0.95rem;
-    box-sizing: border-box;
+    font-size: 0.9rem;
 }
 
-.aircraft-input:focus {
-    outline: 2px solid var(--primary-color);
-    border-color: transparent;
+.table-container {
+    flex-grow: 1;
+    overflow: hidden;
+}
+
+.table-wrapper {
+    max-height: 350px;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+}
+
+.mapping-container table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.mapping-container th {
+    position: sticky;
+    top: 0;
+    background-color: var(--bg-color);
+    z-index: 1;
+}
+
+.mapping-container th,
+.mapping-container td {
+    padding: 10px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.aircraft-input,
+.dept-select {
+    width: 100%;
+    background-color: var(--input-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 6px 10px;
+    border-radius: var(--border-radius);
+    font-size: 0.85rem;
+}
+
+.btn-delete {
+    background: transparent;
+    border: 1px solid #cf6679;
+    color: #cf6679;
+    padding: 4px 8px;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.btn-delete:hover {
+    background-color: #cf6679;
+    color: #fff;
 }
 
 /* Department Select Dropdowns */
 .dept-select,
 .dept-select-mobile {
-    width: 100%;
-    background-color: var(--input-bg);
-    border: 1px solid var(--border-color);
-    color: var(--text-primary);
-    padding: 6px 8px;
-    border-radius: 4px;
-    font-size: 0.9rem;
     cursor: pointer;
 }
 
-.dept-select:focus,
-.dept-select-mobile:focus {
-    outline: 2px solid var(--primary-color);
-    border-color: transparent;
+.btn-danger {
+    background-color: #cf6679;
+    color: white;
+}
+
+.btn-danger:hover {
+    filter: brightness(1.1);
 }
 
 /* Disabled button state */
