@@ -1,10 +1,12 @@
-// Aircraft Mapping Page Logic
+// Mappings Page Logic
 import Storage from './storage.js';
 
 const MappingApp = {
     state: {
         woNumbers: [],
-        mapping: {} // WO -> Aircraft Name
+        tcNumbers: [],
+        mapping: {}, // WO -> Aircraft Name
+        tcMapping: {} // TaskCard -> Department
     },
 
     init: async function () {
@@ -14,16 +16,25 @@ const MappingApp = {
     },
 
     bindEvents: function () {
-        document.getElementById('saveMapping').addEventListener('click', () => this.saveMapping());
-        document.getElementById('add-entry-btn').addEventListener('click', () => this.addManualEntry());
+        document.getElementById('saveMapping').addEventListener('click', () => this.saveAllMappings());
 
-        // Handle keyboard enter on inputs
+        // Aircraft Mapping Events
+        document.getElementById('add-entry-btn').addEventListener('click', () => this.addAircraftEntry());
         document.getElementById('new-aircraft').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') this.addManualEntry();
+            if (e.key === 'Enter') this.addAircraftEntry();
+        });
+
+        // Bulk Delete Event
+        document.getElementById('bulk-delete-btn').addEventListener('click', () => this.bulkDeleteByAircraft());
+
+        // Task Card Mapping Events
+        document.getElementById('add-tc-entry-btn').addEventListener('click', () => this.addTaskCardEntry());
+        document.getElementById('new-tc').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') this.addTaskCardEntry();
         });
     },
 
-    addManualEntry: function () {
+    addAircraftEntry: function () {
         const woInput = document.getElementById('new-wo');
         const aircraftInput = document.getElementById('new-aircraft');
 
@@ -35,33 +46,76 @@ const MappingApp = {
             return;
         }
 
-        // Add to mapping state
         this.state.mapping[wo] = aircraft;
-
-        // Ensure WO is in woNumbers list if not already
         if (!this.state.woNumbers.includes(wo)) {
             this.state.woNumbers.push(wo);
             this.state.woNumbers.sort();
         }
 
-        // Clear inputs
         woInput.value = '';
         aircraftInput.value = '';
-
-        // Re-render table
         this.render();
-
-        // Focus first input for next entry
         woInput.focus();
+    },
+
+    bulkDeleteByAircraft: function () {
+        const select = document.getElementById('bulk-aircraft-delete');
+        const aircraftName = select.value;
+
+        if (!aircraftName) {
+            alert('Lütfen silmek istediğiniz uçağı seçin.');
+            return;
+        }
+
+        if (!confirm(`${aircraftName} uçağına bağlı tüm WO kayıtlarını silmek istediğinize emin misiniz?`)) return;
+
+        // Filter out WOs mapped to this aircraft
+        const newMapping = {};
+        const deletedWOs = [];
+        Object.keys(this.state.mapping).forEach(wo => {
+            if (this.state.mapping[wo] !== aircraftName) {
+                newMapping[wo] = this.state.mapping[wo];
+            } else {
+                deletedWOs.push(wo);
+            }
+        });
+
+        this.state.mapping = newMapping;
+        this.state.woNumbers = this.state.woNumbers.filter(wo => !deletedWOs.includes(wo));
+
+        this.render();
+        alert(`${deletedWOs.length} adet kayıt silindi.`);
+    },
+
+    addTaskCardEntry: function () {
+        const tcInput = document.getElementById('new-tc');
+        const deptInput = document.getElementById('new-dept');
+
+        const tc = tcInput.value.trim();
+        const dept = deptInput.value.trim();
+
+        if (!tc || !dept) {
+            alert('Lütfen hem Task Card numarasını hem de Bölüm bilgisini girin.');
+            return;
+        }
+
+        this.state.tcMapping[tc] = dept;
+        if (!this.state.tcNumbers.includes(tc)) {
+            this.state.tcNumbers.push(tc);
+            this.state.tcNumbers.sort();
+        }
+
+        tcInput.value = '';
+        deptInput.value = '';
+        this.render();
+        tcInput.focus();
     },
 
     loadData: async function () {
         this.showLoading(true);
 
-        // Load main data to get WO numbers
         const mainData = await Storage.load();
         if (mainData && mainData.data) {
-            // WO is at index 2 (after Aircraft Name and Department)
             const woSet = new Set();
             mainData.data.forEach(row => {
                 const wo = row[2]; // WO column
@@ -70,39 +124,53 @@ const MappingApp = {
             this.state.woNumbers = Array.from(woSet).sort();
         }
 
-        // Load existing mapping
+        // Load mappings
         this.state.mapping = await Storage.loadMapping();
+        this.state.tcMapping = await Storage.loadTaskCardMapping();
+
+        // Task Card Mapping is manual-only now: only show what is mapped
+        this.state.tcNumbers = Object.keys(this.state.tcMapping).sort();
 
         this.render();
         this.showLoading(false);
     },
 
-    saveMapping: async function () {
-        // Collect mapping from table
-        const rows = document.querySelectorAll('#mapping-tbody tr');
-        const mapping = {};
-
-        rows.forEach(row => {
-            const wo = row.dataset.wo;
+    saveAllMappings: async function () {
+        // Collect Aircraft Mapping
+        const woRows = document.querySelectorAll('#mapping-tbody tr');
+        const aircraftMapping = {};
+        woRows.forEach(row => {
+            const wo = row.dataset.id;
             const input = row.querySelector('input');
-            const aircraftName = input.value.trim();
-            if (aircraftName) {
-                mapping[wo] = aircraftName;
+            if (input && input.value.trim()) {
+                aircraftMapping[wo] = input.value.trim();
             }
         });
 
-        // Save to Firebase
-        const success = await Storage.saveMapping(mapping);
-        if (success) {
-            alert('Eşleştirme verileri kaydedildi! Ana sayfaya dönebilirsiniz.');
-            this.state.mapping = mapping;
+        // Collect Task Card Mapping
+        const tcRows = document.querySelectorAll('#tc-mapping-tbody tr');
+        const tcMapping = {};
+        tcRows.forEach(row => {
+            const tc = row.dataset.id;
+            const select = row.querySelector('select');
+            if (select && select.value) {
+                tcMapping[tc] = select.value;
+            }
+        });
+
+        const s1 = await Storage.saveMapping(aircraftMapping);
+        const s2 = await Storage.saveTaskCardMapping(tcMapping);
+
+        if (s1 && s2) {
+            alert('Tüm eşleştirme verileri başarıyla kaydedildi!');
+            this.state.mapping = aircraftMapping;
+            this.state.tcMapping = tcMapping;
         }
     },
 
     showLoading: function (show) {
         const loading = document.getElementById('loading');
         const container = document.getElementById('mapping-container');
-
         if (show) {
             loading.classList.remove('hidden');
             container.classList.add('hidden');
@@ -113,50 +181,80 @@ const MappingApp = {
     },
 
     render: function () {
-        const tbody = document.getElementById('mapping-tbody');
-        tbody.innerHTML = '';
+        const departments = ["Cabin", "Ortak Cabin", "TEKSTIL", "AVI", "MEC", "STR", "OTHER"];
 
-        if (this.state.woNumbers.length === 0) {
-            const tr = document.createElement('tr');
-            const td = document.createElement('td');
-            td.colSpan = 2;
-            td.textContent = 'Henüz WO verisi yok. Lütfen önce ana sayfada Excel dosyası yükleyin.';
-            td.style.textAlign = 'center';
-            td.style.padding = '40px';
-            td.style.color = 'var(--text-secondary)';
-            tr.appendChild(td);
-            tbody.appendChild(tr);
-            return;
+        // Populate Bulk Delete Dropdown
+        const bulkSelect = document.getElementById('bulk-aircraft-delete');
+        if (bulkSelect) {
+            const currentVal = bulkSelect.value;
+            const uniqueAircraftNames = [...new Set(Object.values(this.state.mapping))].sort();
+            bulkSelect.innerHTML = '<option value="">Uçak Seçin</option>';
+            uniqueAircraftNames.forEach(name => {
+                const opt = document.createElement('option');
+                opt.value = name;
+                opt.textContent = name;
+                if (name === currentVal) opt.selected = true;
+                bulkSelect.appendChild(opt);
+            });
         }
 
+        // Render Aircraft Mappings
+        const aircraftTbody = document.getElementById('mapping-tbody');
+        aircraftTbody.innerHTML = '';
         this.state.woNumbers.forEach(wo => {
             const tr = document.createElement('tr');
-            tr.dataset.wo = wo;
-
-            // WO Number Cell
-            const tdWo = document.createElement('td');
-            tdWo.textContent = wo;
-            tdWo.classList.add('tight-cell');
-
-            // Aircraft Name Input Cell
-            const tdAircraft = document.createElement('td');
-            const input = document.createElement('input');
-            input.type = 'text';
-            input.className = 'aircraft-input';
-            input.placeholder = 'Uçak ismini girin...';
-            input.value = this.state.mapping[wo] || '';
-            tdAircraft.appendChild(input);
-
-            tr.appendChild(tdWo);
-            tr.appendChild(tdAircraft);
-            tbody.appendChild(tr);
+            tr.dataset.id = wo;
+            tr.innerHTML = `
+                <td class="tight-cell">${wo}</td>
+                <td><input type="text" class="aircraft-input" value="${this.state.mapping[wo] || ''}" placeholder="Uçak ismi..."></td>
+                <td style="width: 50px; text-align: center;">
+                    <button class="btn btn-sm btn-delete" title="Sil" onclick="window.MappingApp.deleteEntry('aircraft', '${wo}')">🗑️</button>
+                </td>
+            `;
+            aircraftTbody.appendChild(tr);
         });
+
+        // Render Task Card Mappings
+        const tcTbody = document.getElementById('tc-mapping-tbody');
+        tcTbody.innerHTML = '';
+        this.state.tcNumbers.forEach(tc => {
+            const tr = document.createElement('tr');
+            tr.dataset.id = tc;
+            const currentDept = this.state.tcMapping[tc] || '';
+            let deptOptions = `<option value="">Bölüm Seçin</option>`;
+            departments.forEach(dept => {
+                deptOptions += `<option value="${dept}" ${currentDept === dept ? 'selected' : ''}>${dept}</option>`;
+            });
+
+            tr.innerHTML = `
+                <td class="tight-cell">${tc}</td>
+                <td>
+                    <select class="dept-select">
+                        ${deptOptions}
+                    </select>
+                </td>
+                <td style="width: 50px; text-align: center;">
+                    <button class="btn btn-sm btn-delete" title="Sil" onclick="window.MappingApp.deleteEntry('tc', '${tc}')">🗑️</button>
+                </td>
+            `;
+            tcTbody.appendChild(tr);
+        });
+    },
+
+    deleteEntry: function (type, id) {
+        if (!confirm('Bu eşleştirmeyi silmek istediğinize emin misiniz?')) return;
+
+        if (type === 'aircraft') {
+            delete this.state.mapping[id];
+            this.state.woNumbers = this.state.woNumbers.filter(wo => wo !== id);
+        } else {
+            delete this.state.tcMapping[id];
+            this.state.tcNumbers = this.state.tcNumbers.filter(tc => tc !== id);
+        }
+        this.render();
     }
 };
 
-// Start App
-document.addEventListener('DOMContentLoaded', () => {
-    MappingApp.init();
-});
-
+window.MappingApp = MappingApp; // Make accessible globally for onclick
+document.addEventListener('DOMContentLoaded', () => MappingApp.init());
 export default MappingApp;
