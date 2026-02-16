@@ -15,6 +15,44 @@ const MappingApp = {
 
     bindEvents: function () {
         document.getElementById('saveMapping').addEventListener('click', () => this.saveMapping());
+        document.getElementById('add-entry-btn').addEventListener('click', () => this.addManualEntry());
+
+        // Handle keyboard enter on inputs
+        document.getElementById('new-aircraft').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') this.addManualEntry();
+        });
+    },
+
+    addManualEntry: function () {
+        const woInput = document.getElementById('new-wo');
+        const aircraftInput = document.getElementById('new-aircraft');
+
+        const wo = woInput.value.trim();
+        const aircraft = aircraftInput.value.trim();
+
+        if (!wo || !aircraft) {
+            alert('Lütfen hem WO numarasını hem de uçak ismini girin.');
+            return;
+        }
+
+        // Add to mapping state
+        this.state.mapping[wo] = aircraft;
+
+        // Ensure WO is in woNumbers list if not already
+        if (!this.state.woNumbers.includes(wo)) {
+            this.state.woNumbers.push(wo);
+            this.state.woNumbers.sort();
+        }
+
+        // Clear inputs
+        woInput.value = '';
+        aircraftInput.value = '';
+
+        // Re-render table
+        this.render();
+
+        // Focus first input for next entry
+        woInput.focus();
     },
 
     loadData: async function () {
