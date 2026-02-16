@@ -1,127 +1,144 @@
-const Storage = {
-    COLLECTION: 'nrc_dashboard',
-    DOC_ID: 'main_data',
-    KEY: 'nrc_dashboard_data', // Fallback for localStorage
+// Firebase Storage Module
+import { db, doc, setDoc, getDoc, collection, getDocs, writeBatch } from './firebase-config.js';
 
-    // Save data to Firestore
+const Storage = {
+    COLLECTION: 'dashboard_data',
+    DOC_MAIN: 'main_data',
+    DOC_MAPPING: 'aircraft_mapping',
+    DOC_METADATA: 'metadata',
+
+    // Save main dashboard data
     save: async function (data) {
         try {
-            // Wait for Firestore to be ready
-            const db = await FirestoreUtils.waitForFirestore();
-            const { doc, setDoc, serverTimestamp } = await FirestoreUtils.getFirestoreFunctions();
-
-            // Save to Firestore
-            const docRef = doc(db, this.COLLECTION, this.DOC_ID);
+            const docRef = doc(db, this.COLLECTION, this.DOC_MAIN);
             await setDoc(docRef, {
-                headers: data.headers || [],
-                data: data.data || [],
-                lastUpdated: serverTimestamp()
+                headers: data.headers,
+                data: data.data,
+                lastUpdated: new Date().toISOString()
             });
-
-            console.log('Data saved to Firestore');
-
-            // Also save to localStorage as backup
-            localStorage.setItem(this.KEY, JSON.stringify(data));
-
+            console.log('Data saved to Firebase');
             return true;
         } catch (e) {
-            console.error('Error saving data to Firestore:', e);
-
-            // Fallback to localStorage
-            try {
-                localStorage.setItem(this.KEY, JSON.stringify(data));
-                console.log('Data saved to localStorage (fallback)');
-                return true;
-            } catch (localErr) {
-                console.error('Error saving to localStorage:', localErr);
-                return false;
-            }
+            console.error('Error saving data to Firebase:', e);
+            alert('Veri kaydedilirken hata oluştu: ' + e.message);
+            return false;
         }
     },
 
-    // Load data from Firestore
+    // Load main dashboard data
     load: async function () {
         try {
-            // Wait for Firestore to be ready
-            const db = await FirestoreUtils.waitForFirestore();
-            const { doc, getDoc } = await FirestoreUtils.getFirestoreFunctions();
-
-            // Load from Firestore
-            const docRef = doc(db, this.COLLECTION, this.DOC_ID);
+            const docRef = doc(db, this.COLLECTION, this.DOC_MAIN);
             const docSnap = await getDoc(docRef);
 
             if (docSnap.exists()) {
-                const firestoreData = docSnap.data();
-                console.log('Data loaded from Firestore');
+                const data = docSnap.data();
+                console.log('Data loaded from Firebase');
                 return {
-                    headers: firestoreData.headers || [],
-                    data: firestoreData.data || []
+                    headers: data.headers,
+                    data: data.data
                 };
             } else {
-                console.log('No data found in Firestore, checking localStorage...');
-
-                // Try localStorage as fallback
-                const localData = localStorage.getItem(this.KEY);
-                if (localData) {
-                    const parsed = JSON.parse(localData);
-                    console.log('Data loaded from localStorage');
-
-                    // Migrate to Firestore
-                    await this.save(parsed);
-                    console.log('Data migrated from localStorage to Firestore');
-
-                    return parsed;
-                }
-
+                console.log('No data found in Firebase');
                 return null;
             }
         } catch (e) {
-            console.error('Error loading data from Firestore:', e);
-
-            // Fallback to localStorage
-            try {
-                const data = localStorage.getItem(this.KEY);
-                if (data) {
-                    console.log('Data loaded from localStorage (fallback)');
-                    return JSON.parse(data);
-                }
-                return null;
-            } catch (localErr) {
-                console.error('Error loading from localStorage:', localErr);
-                return null;
-            }
+            console.error('Error loading data from Firebase:', e);
+            return null;
         }
     },
 
-    // Clear data from Firestore
-    clear: async function () {
+    // Save aircraft mapping (WO -> Aircraft Name)
+    saveMapping: async function (mappingData) {
         try {
-            // Wait for Firestore to be ready
-            const db = await FirestoreUtils.waitForFirestore();
-            const { doc, deleteDoc } = await FirestoreUtils.getFirestoreFunctions();
-
-            // Delete from Firestore
-            const docRef = doc(db, this.COLLECTION, this.DOC_ID);
-            await deleteDoc(docRef);
-
-            console.log('Data cleared from Firestore');
-
-            // Also clear localStorage
-            localStorage.removeItem(this.KEY);
-
+            const docRef = doc(db, this.COLLECTION, this.DOC_MAPPING);
+            await setDoc(docRef, {
+                mapping: mappingData,
+                lastUpdated: new Date().toISOString()
+            });
+            console.log('Mapping data saved to Firebase');
             return true;
         } catch (e) {
-            console.error('Error clearing data from Firestore:', e);
+            console.error('Error saving mapping to Firebase:', e);
+            alert('Eşleştirme verileri kaydedilirken hata oluştu: ' + e.message);
+            return false;
+        }
+    },
 
-            // Fallback to localStorage
-            try {
-                localStorage.removeItem(this.KEY);
-                console.log('Data cleared from localStorage (fallback)');
-                return true;
-            } catch (localErr) {
-                console.error('Error clearing localStorage:', localErr);
-                return false;
+    // Load aircraft mapping
+    loadMapping: async function () {
+        try {
+            const docRef = doc(db, this.COLLECTION, this.DOC_MAPPING);
+            const docSnap = await getDoc(docRef);
+
+            if (docSnap.exists()) {
+                console.log('Mapping data loaded from Firebase');
+                return docSnap.data().mapping || {};
+            } else {
+                console.log('No mapping data found');
+                return {};
             }
+        } catch (e) {
+            console.error('Error loading mapping from Firebase:', e);
+            return {};
+        }
+    },
+
+    // Save metadata (import timestamp, stats)
+    saveMetadata: async function (metadata) {
+        try {
+            const docRef = doc(db, this.COLLECTION, this.DOC_METADATA);
+            await setDoc(docRef, {
+                ...metadata,
+                lastUpdated: new Date().toISOString()
+            });
+            console.log('Metadata saved to Firebase');
+            return true;
+        } catch (e) {
+            console.error('Error saving metadata to Firebase:', e);
+            return false;
+        }
+    },
+
+    // Load metadata
+    loadMetadata: async function () {
+        try {
+            const docRef = doc(db, this.COLLECTION, this.DOC_METADATA);
+            const docSnap = await getDoc(docRef);
+
+            if (docSnap.exists()) {
+                console.log('Metadata loaded from Firebase');
+                return docSnap.data();
+            } else {
+                return null;
+            }
+        } catch (e) {
+            console.error('Error loading metadata from Firebase:', e);
+            return null;
+        }
+    },
+
+    // Clear all data (for testing purposes)
+    clear: async function () {
+        try {
+            const batch = writeBatch(db);
+
+            const mainRef = doc(db, this.COLLECTION, this.DOC_MAIN);
+            const mappingRef = doc(db, this.COLLECTION, this.DOC_MAPPING);
+            const metadataRef = doc(db, this.COLLECTION, this.DOC_METADATA);
+
+            batch.delete(mainRef);
+            batch.delete(mappingRef);
+            batch.delete(metadataRef);
+
+            await batch.commit();
+            console.log('All data cleared from Firebase');
+            return true;
+        } catch (e) {
+            console.error('Error clearing data from Firebase:', e);
+            return false;
         }
     }
 };
+
+export default Storage;
