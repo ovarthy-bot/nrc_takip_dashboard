@@ -119,36 +119,6 @@ const UI = {
         });
         this.elements.tableHead.appendChild(trHead);
 
-        // Filter Row
-        const trFilter = document.createElement('tr');
-        headers.forEach((h, index) => {
-            const th = document.createElement('th');
-            // Filterable columns: WO (2), Status (8), etc.
-            if ([2, 5, 7, 8].includes(index)) {
-                const select = document.createElement('select');
-                select.innerHTML = '<option value="">Tümü</option>';
-
-                // Get unique values from ALL data, not just current page
-                const unique = [...new Set(window.App.state.allData.map(row => row[index]))].sort();
-                unique.forEach(val => {
-                    if (val) {
-                        const opt = document.createElement('option');
-                        opt.value = val;
-                        opt.textContent = val;
-                        select.appendChild(opt);
-                    }
-                });
-
-                select.onchange = (e) => {
-                    // This is a column-specific filter, not implemented in simplified version
-                    // Can be added if needed
-                };
-                th.appendChild(select);
-            }
-            trFilter.appendChild(th);
-        });
-        this.elements.tableHead.appendChild(trFilter);
-
         // Clear Body
         this.elements.tableBody.innerHTML = '';
         data.forEach(row => {
@@ -160,7 +130,7 @@ const UI = {
                 if (i === 1) {
                     const select = document.createElement('select');
                     select.className = 'dept-select';
-                    const departments = ['', 'Cabin', 'Ortak Cabin', 'AVI', 'MEC', 'STR', 'OTHER'];
+                    const departments = ['', 'Cabin', 'Ortak Cabin', 'TEKSTIL', 'AVI', 'MEC', 'STR', 'OTHER'];
                     departments.forEach(dept => {
                         const opt = document.createElement('option');
                         opt.value = dept;
@@ -227,7 +197,7 @@ const UI = {
                 if (i === 1) {
                     const select = document.createElement('select');
                     select.className = 'dept-select-mobile';
-                    const departments = ['', 'Cabin', 'Ortak Cabin', 'AVI', 'MEC', 'STR', 'OTHER'];
+                    const departments = ['', 'Cabin', 'Ortak Cabin', 'TEKSTIL', 'AVI', 'MEC', 'STR', 'OTHER'];
                     departments.forEach(dept => {
                         const opt = document.createElement('option');
                         opt.value = dept;
