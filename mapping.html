@@ -36,32 +36,91 @@
 
         <div id="mapping-container" class="mapping-container">
             <div class="mapping-info">
-                <p>WO numaralarını uçak isimleriyle eşleştirin. Bu veriler ana sayfada otomatik olarak görünecektir.
-                    Eksik WO'ları aşağıdan manuel olarak da ekleyebilirsiniz.</p>
+                <p>Eşleştirme verilerini buradan yönetebilirsiniz. Bu veriler ana sayfada otomatik olarak görünecektir.
+                </p>
             </div>
 
-            <!-- Manual Entry Section -->
-            <div class="manual-entry-section">
-                <h3>Manuel Giriş</h3>
-                <div class="entry-form">
-                    <input type="text" id="new-wo" placeholder="WO Numarası">
-                    <input type="text" id="new-aircraft" placeholder="Uçak İsmi">
-                    <button id="add-entry-btn" class="btn btn-secondary">Ekle</button>
+            <div class="mapping-grid">
+                <!-- Section 1: Aircraft Mapping -->
+                <div class="manual-entry-section">
+                    <div class="section-header">
+                        <h3>1. Uçak Eşleştirme (WO -> Uçak İsmi)</h3>
+                    </div>
+
+                    <div class="bulk-actions-wrapper">
+                        <div class="bulk-actions">
+                            <span class="bulk-label">Uçak Bazlı Toplu Sil:</span>
+                            <div class="bulk-controls">
+                                <select id="bulk-aircraft-delete" class="filter-select">
+                                    <option value="">Uçak Seçin</option>
+                                </select>
+                                <button id="bulk-delete-btn" class="btn btn-danger btn-sm">Toplu Sil</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="entry-form">
+                        <input type="text" id="new-wo" placeholder="WO Numarası">
+                        <input type="text" id="new-aircraft" placeholder="Uçak İsmi">
+                        <button id="add-entry-btn" class="btn btn-secondary">Ekle</button>
+                    </div>
+
+                    <div class="table-container">
+                        <div class="table-wrapper">
+                            <table id="mapping-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 30%;">WO</th>
+                                        <th style="width: 55%;">Uçak İsmi</th>
+                                        <th style="width: 15%;">İşlem</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="mapping-tbody">
+                                    <!-- Rows will be injected here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
-            </div>
 
-            <div class="table-wrapper">
-                <table id="mapping-table">
-                    <thead>
-                        <tr>
-                            <th style="width: 30%;">WO Numarası</th>
-                            <th style="width: 70%;">Uçak İsmi</th>
-                        </tr>
-                    </thead>
-                    <tbody id="mapping-tbody">
-                        <!-- Rows will be injected here -->
-                    </tbody>
-                </table>
+                <!-- Section 2: Task Card Mapping -->
+                <div class="manual-entry-section">
+                    <div class="section-header">
+                        <h3>2. Task Card Eşleştirme (TC -> Bölüm)</h3>
+                    </div>
+
+                    <div class="entry-form">
+                        <input type="text" id="new-tc" placeholder="Task Card No">
+                        <select id="new-dept" class="filter-select">
+                            <option value="">Bölüm Seçin</option>
+                            <option value="Cabin">Cabin</option>
+                            <option value="Ortak Cabin">Ortak Cabin</option>
+                            <option value="TEKSTIL">TEKSTIL</option>
+                            <option value="AVI">AVI</option>
+                            <option value="MEC">MEC</option>
+                            <option value="STR">STR</option>
+                            <option value="OTHER">OTHER</option>
+                        </select>
+                        <button id="add-tc-entry-btn" class="btn btn-secondary">Ekle</button>
+                    </div>
+
+                    <div class="table-container">
+                        <div class="table-wrapper">
+                            <table id="tc-mapping-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 40%;">Task Card</th>
+                                        <th style="width: 45%;">Bölüm</th>
+                                        <th style="width: 15%;">İşlem</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tc-mapping-tbody">
+                                    <!-- Rows will be injected here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </main>
