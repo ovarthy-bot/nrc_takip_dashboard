@@ -5,6 +5,7 @@ const Storage = {
     COLLECTION: 'dashboard_data',
     DOC_MAIN: 'main_data',
     DOC_MAPPING: 'aircraft_mapping',
+    DOC_TC_MAPPING: 'taskcard_mapping',
     DOC_METADATA: 'metadata',
 
     // Save main dashboard data
@@ -91,6 +92,42 @@ const Storage = {
         }
     },
 
+    // Save task card mapping (TaskCard -> Department)
+    saveTaskCardMapping: async function (mappingData) {
+        try {
+            const docRef = doc(db, this.COLLECTION, this.DOC_TC_MAPPING);
+            await setDoc(docRef, {
+                mapping: mappingData,
+                lastUpdated: new Date().toISOString()
+            });
+            console.log('Task Card mapping data saved to Firebase');
+            return true;
+        } catch (e) {
+            console.error('Error saving task card mapping to Firebase:', e);
+            alert('Task Card eşleştirme verileri kaydedilirken hata oluştu: ' + e.message);
+            return false;
+        }
+    },
+
+    // Load task card mapping
+    loadTaskCardMapping: async function () {
+        try {
+            const docRef = doc(db, this.COLLECTION, this.DOC_TC_MAPPING);
+            const docSnap = await getDoc(docRef);
+
+            if (docSnap.exists()) {
+                console.log('Task Card mapping data loaded from Firebase');
+                return docSnap.data().mapping || {};
+            } else {
+                console.log('No task card mapping data found');
+                return {};
+            }
+        } catch (e) {
+            console.error('Error loading task card mapping from Firebase:', e);
+            return {};
+        }
+    },
+
     // Save metadata (import timestamp, stats)
     saveMetadata: async function (metadata) {
         try {
@@ -132,10 +169,12 @@ const Storage = {
 
             const mainRef = doc(db, this.COLLECTION, this.DOC_MAIN);
             const mappingRef = doc(db, this.COLLECTION, this.DOC_MAPPING);
+            const tcMappingRef = doc(db, this.COLLECTION, this.DOC_TC_MAPPING);
             const metadataRef = doc(db, this.COLLECTION, this.DOC_METADATA);
 
             batch.delete(mainRef);
             batch.delete(mappingRef);
+            batch.delete(tcMappingRef);
             batch.delete(metadataRef);
 
             await batch.commit();
