@@ -21,50 +21,44 @@
 <body>
 
     <header>
-        <div class="header-content">
-            <h1>NRC Dashboard</h1>
+        <div class="header-main">
+            <h1 class="header-title">NRC Dashboard</h1>
+            <div class="search-bar">
+                <input type="text" id="search" placeholder="Ara (WO, Task Card, Status...)">
+            </div>
             <div class="controls">
-                <label for="fileInput" class="btn btn-primary">
+                <label for="fileInput" class="btn btn-primary btn-sm">
                     <span class="icon">📂</span> Excel Yükle
                 </label>
                 <input type="file" id="fileInput" accept=".xlsx,.xls" hidden>
-                <a href="mapping.html" class="btn btn-secondary">
-                    <span class="icon">✈️</span> Uçak Eşleştirme
+                <a href="mapping.html" class="btn btn-secondary btn-sm">
+                    <span class="icon">✈️</span> Eşleştirme
                 </a>
             </div>
         </div>
 
-        <!-- Stats Bar -->
-        <div id="stats-bar" class="stats-bar hidden">
-            <div class="stat-item">
-                <span class="stat-label">Son Güncelleme:</span>
-                <span id="last-import-time" class="stat-value">-</span>
-            </div>
-            <div class="stat-item stat-open">
-                <span class="stat-label">OPEN:</span>
-                <span id="stat-open" class="stat-value">0</span>
-            </div>
-            <div class="stat-item stat-closed">
-                <span class="stat-label">CLOSED:</span>
-                <span id="stat-closed" class="stat-value">0</span>
-            </div>
-            <div class="stat-item stat-defer">
-                <span class="stat-label">DEFER:</span>
-                <span id="stat-defer" class="stat-value">0</span>
-            </div>
-        </div>
-
-        <!-- Filters Section (Desktop) -->
-        <div id="filters-section" class="filters-section hidden">
-            <div class="filter-group">
-                <label>Uçak İsmi:</label>
-                <select id="aircraft-filter" class="filter-select">
-                    <option value="">Tümü</option>
-                </select>
+        <div class="header-row">
+            <!-- Stats Bar -->
+            <div id="stats-bar" class="stats-bar hidden">
+                <div class="stat-item stat-time">
+                    <span id="last-import-time" class="stat-value">-</span>
+                </div>
+                <div class="stat-item stat-open">
+                    <span class="stat-label">OPEN</span>
+                    <span id="stat-open" class="stat-value">0</span>
+                </div>
+                <div class="stat-item stat-closed">
+                    <span class="stat-label">CLOSED</span>
+                    <span id="stat-closed" class="stat-value">0</span>
+                </div>
+                <div class="stat-item stat-defer">
+                    <span class="stat-label">DEFER</span>
+                    <span id="stat-defer" class="stat-value">0</span>
+                </div>
             </div>
 
-            <div class="filter-group">
-                <label>Bölüm:</label>
+            <!-- Filters Section -->
+            <div id="filters-section" class="filters-section hidden">
                 <div class="department-checkboxes">
                     <label class="checkbox-label">
                         <input type="checkbox" value="Cabin" class="dept-checkbox"> <span>Cabin</span>
@@ -85,11 +79,10 @@
                         <input type="checkbox" value="OTHER" class="dept-checkbox"> <span>OTHER</span>
                     </label>
                 </div>
+                <select id="aircraft-filter" class="filter-select">
+                    <option value="">Uçak Tümü</option>
+                </select>
             </div>
-        </div>
-
-        <div class="search-bar">
-            <input type="text" id="search" placeholder="Ara (WO, Task Card, Status...)">
         </div>
 
         <div id="progress-container" class="progress-container hidden">
