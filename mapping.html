@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Uçak Eşleştirme - NRC Dashboard</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+
+    <header>
+        <div class="header-content">
+            <h1>Uçak Eşleştirme</h1>
+            <div class="controls">
+                <a href="index.html" class="btn btn-secondary">
+                    <span class="icon">◀</span> Ana Sayfa
+                </a>
+                <button id="saveMapping" class="btn btn-primary">
+                    <span class="icon">💾</span> Kaydet
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main id="app">
+        <div id="loading" class="hidden">Yükleniyor...</div>
+
+        <div id="mapping-container" class="mapping-container">
+            <div class="mapping-info">
+                <p>WO numaralarını uçak isimleriyle eşleştirin. Bu veriler ana sayfada otomatik olarak görünecektir.</p>
+            </div>
+
+            <div class="table-wrapper">
+                <table id="mapping-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 30%;">WO Numarası</th>
+                            <th style="width: 70%;">Uçak İsmi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="mapping-tbody">
+                        <!-- Rows will be injected here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- Custom JS (ES6 Modules for Firebase) -->
+    <script type="module" src="js/firebase-config.js"></script>
+    <script type="module" src="js/storage.js"></script>
+    <script type="module" src="js/mapping.js"></script>
+</body>
+
+</html>
