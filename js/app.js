@@ -8,10 +8,15 @@ const App = {
         filteredData: [],
         headers: [],
         aircraftMapping: {}, // WO -> Aircraft Name
+        taskCardMapping: {}, // TaskCard -> Department
         filters: {
             global: '',
             aircraft: '',
-            departments: [] // Selected departments
+            departments: [], // Selected departments
+            status: '',
+            scheduleTaskCard: '',
+            chapter: '',
+            wo: ''
         },
         sort: {
             colIndex: -1,
@@ -64,6 +69,26 @@ const App = {
         // Aircraft filter
         document.getElementById('aircraft-filter').addEventListener('change', (e) => {
             this.filterData('aircraft', e.target.value);
+        });
+
+        // WO filter
+        document.getElementById('wo-filter').addEventListener('change', (e) => {
+            this.filterData('wo', e.target.value);
+        });
+
+        // Status filter
+        document.getElementById('status-filter').addEventListener('change', (e) => {
+            this.filterData('status', e.target.value);
+        });
+
+        // Chapter filter
+        document.getElementById('chapter-filter').addEventListener('change', (e) => {
+            this.filterData('chapter', e.target.value);
+        });
+
+        // Task Card filter
+        document.getElementById('tc-filter').addEventListener('change', (e) => {
+            this.filterData('scheduleTaskCard', e.target.value);
         });
 
         // Department checkboxes
@@ -124,9 +149,12 @@ const App = {
 
         // Load aircraft mapping
         this.state.aircraftMapping = await Storage.loadMapping();
+        // Load task card mapping
+        this.state.taskCardMapping = await Storage.loadTaskCardMapping();
 
-        // Apply aircraft mapping to data
+        // Apply mappings to data
         this.applyAircraftMapping();
+        this.applyTaskCardMapping();
 
         // Load metadata (import time, stats)
         const metadata = await Storage.loadMetadata();
@@ -135,6 +163,7 @@ const App = {
         }
 
         this.state.filteredData = this.state.allData;
+        this.populateAircraftFilter(); // Populate dropdowns
         this.calculateStats();
         this.render();
         UI.toggleLoading(false);
@@ -149,11 +178,22 @@ const App = {
 
     applyAircraftMapping: function () {
         // Apply aircraft names based on WO number
-        // WO is at index 1 (after Aircraft Name column)
+        // WO is at index 2 (after Aircraft Name and Department columns)
         this.state.allData.forEach(row => {
-            const wo = row[1]; // WO column
+            const wo = row[2]; // WO column
             if (wo && this.state.aircraftMapping[wo]) {
                 row[0] = this.state.aircraftMapping[wo]; // Set Aircraft Name
+            }
+        });
+    },
+
+    applyTaskCardMapping: function () {
+        // Apply departments based on Task Card number
+        // Task Card is at index 3
+        this.state.allData.forEach(row => {
+            const tc = row[3]; // Task Card column
+            if (tc && this.state.taskCardMapping[tc]) {
+                row[1] = this.state.taskCardMapping[tc]; // Set Department
             }
         });
     },
@@ -265,8 +305,9 @@ const App = {
 
                 // Add Aircraft Name and Department at the beginning
                 const wo = mappedRow[0]; // WO is first in mappedRow
+                const tc = mappedRow[1]; // Task Card is second in mappedRow
                 const aircraftName = this.state.aircraftMapping[wo] || "";
-                const department = ""; // Will be set by user
+                const department = this.state.taskCardMapping[tc] || "";
 
                 const finalRow = [aircraftName, department, ...mappedRow];
 
@@ -368,6 +409,14 @@ const App = {
             this.state.filters.global = value;
         } else if (filterType === 'aircraft') {
             this.state.filters.aircraft = value;
+        } else if (filterType === 'status') {
+            this.state.filters.status = value;
+        } else if (filterType === 'scheduleTaskCard') {
+            this.state.filters.scheduleTaskCard = value;
+        } else if (filterType === 'chapter') {
+            this.state.filters.chapter = value;
+        } else if (filterType === 'wo') {
+            this.state.filters.wo = value;
         }
         this.applyFilters();
     },
@@ -382,14 +431,41 @@ const App = {
                 if (!globalMatch) return false;
             }
 
-            // Aircraft Filter
+            // Aircraft Filter (index 0)
             if (this.state.filters.aircraft && row[0] !== this.state.filters.aircraft) {
                 return false;
             }
 
-            // Department Filter
+            // Department Filter (index 1)
             if (this.state.filters.departments.length > 0) {
                 if (!this.state.filters.departments.includes(row[1])) {
+                    return false;
+                }
+            }
+
+            // WO Filter (index 2)
+            if (this.state.filters.wo && String(row[2] || '').trim() !== this.state.filters.wo) {
+                return false;
+            }
+
+            // Task Card Filter (index 7 - Schedule Task Card)
+            if (this.state.filters.scheduleTaskCard && String(row[7] || '').trim() !== this.state.filters.scheduleTaskCard) {
+                return false;
+            }
+
+            // Chapter Filter (index 8)
+            if (this.state.filters.chapter && String(row[8] || '').trim() !== this.state.filters.chapter) {
+                return false;
+            }
+
+            // Status Filter (index 8/dynamic)
+            if (this.state.filters.status) {
+                const statusHeaderIndex = this.state.headers.findIndex(h =>
+                    String(h).toUpperCase().includes('STATUS') ||
+                    String(h).toUpperCase() === 'DURUM'
+                );
+                const statusIdx = statusHeaderIndex !== -1 ? statusHeaderIndex : 9;
+                if (!String(row[statusIdx]).toUpperCase().includes(this.state.filters.status.toUpperCase())) {
                     return false;
                 }
             }
@@ -487,12 +563,48 @@ const App = {
         const select = document.getElementById('aircraft-filter');
         const unique = [...new Set(this.state.allData.map(row => row[0]))].filter(v => v).sort();
 
-        select.innerHTML = '<option value="">Tümü</option>';
+        select.innerHTML = '<option value="">Uçak Tümü</option>';
         unique.forEach(aircraft => {
             const opt = document.createElement('option');
             opt.value = aircraft;
             opt.textContent = aircraft;
             select.appendChild(opt);
+        });
+
+        // Other filters
+        this.populateExtraFilters();
+    },
+
+    populateExtraFilters: function () {
+        const filters = [
+            { id: 'status-filter', index: 9, label: 'Status' },
+            { id: 'tc-filter', index: 7, label: 'Schedule' },
+            { id: 'chapter-filter', index: 8, label: 'Chapter' },
+            { id: 'wo-filter', index: 2, label: 'WO' }
+        ];
+
+        filters.forEach(f => {
+            const select = document.getElementById(f.id);
+            if (!select) return;
+
+            // Handle dynamic status index
+            let idx = f.index;
+            if (f.id === 'status-filter') {
+                const statusHeaderIndex = this.state.headers.findIndex(h =>
+                    String(h).toUpperCase().includes('STATUS') ||
+                    String(h).toUpperCase() === 'DURUM'
+                );
+                idx = statusHeaderIndex !== -1 ? statusHeaderIndex : 9;
+            }
+
+            const unique = [...new Set(this.state.allData.map(row => String(row[idx] || '').trim()))].filter(v => v).sort();
+            select.innerHTML = `<option value="">${f.label} Tümü</option>`;
+            unique.forEach(val => {
+                const opt = document.createElement('option');
+                opt.value = val;
+                opt.textContent = val;
+                select.appendChild(opt);
+            });
         });
     },
 
