@@ -28,12 +28,70 @@
                     <span class="icon">📂</span> Excel Yükle
                 </label>
                 <input type="file" id="fileInput" accept=".xlsx,.xls" hidden>
-                <button id="clearDataBtn" class="btn btn-danger" hidden>Verileri Temizle</button>
+                <a href="mapping.html" class="btn btn-secondary">
+                    <span class="icon">✈️</span> Uçak Eşleştirme
+                </a>
             </div>
         </div>
+
+        <!-- Stats Bar -->
+        <div id="stats-bar" class="stats-bar hidden">
+            <div class="stat-item">
+                <span class="stat-label">Son Güncelleme:</span>
+                <span id="last-import-time" class="stat-value">-</span>
+            </div>
+            <div class="stat-item stat-open">
+                <span class="stat-label">OPEN:</span>
+                <span id="stat-open" class="stat-value">0</span>
+            </div>
+            <div class="stat-item stat-closed">
+                <span class="stat-label">CLOSED:</span>
+                <span id="stat-closed" class="stat-value">0</span>
+            </div>
+            <div class="stat-item stat-defer">
+                <span class="stat-label">DEFER:</span>
+                <span id="stat-defer" class="stat-value">0</span>
+            </div>
+        </div>
+
+        <!-- Filters Section (Desktop) -->
+        <div id="filters-section" class="filters-section hidden">
+            <div class="filter-group">
+                <label>Uçak İsmi:</label>
+                <select id="aircraft-filter" class="filter-select">
+                    <option value="">Tümü</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label>Bölüm:</label>
+                <div class="department-checkboxes">
+                    <label class="checkbox-label">
+                        <input type="checkbox" value="Cabin" class="dept-checkbox"> Cabin
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" value="Ortak Cabin" class="dept-checkbox"> Ortak Cabin
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" value="AVI" class="dept-checkbox"> AVI
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" value="MEC" class="dept-checkbox"> MEC
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" value="STR" class="dept-checkbox"> STR
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" value="OTHER" class="dept-checkbox"> OTHER
+                    </label>
+                </div>
+            </div>
+        </div>
+
         <div class="search-bar">
             <input type="text" id="search" placeholder="Ara (WO, Task Card, Status...)">
         </div>
+
         <div id="progress-container" class="progress-container hidden">
             <div class="progress-bar">
                 <div id="progress-fill" class="progress-fill"></div>
@@ -66,36 +124,28 @@
             <div id="card-list" class="card-list">
                 <!-- Cards will be injected here -->
             </div>
+
+            <!-- Pagination Controls -->
+            <div id="pagination-controls" class="pagination-controls">
+                <button id="prev-page" class="btn btn-secondary">◀ Önceki</button>
+                <span id="page-info" class="page-info">Sayfa 1 / 1</span>
+                <button id="next-page" class="btn btn-secondary">Sonraki ▶</button>
+                <select id="items-per-page" class="items-per-page">
+                    <option value="50">50 satır</option>
+                    <option value="100" selected>100 satır</option>
+                    <option value="200">200 satır</option>
+                    <option value="500">500 satır</option>
+                </select>
+            </div>
         </div>
     </main>
 
-    <!-- Firebase SDK -->
-    <script type="module">
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getFirestore } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+    <!-- Custom JS (ES6 Modules for Firebase) -->
+    <script type="module" src="js/firebase-config.js"></script>
+    <script type="module" src="js/storage.js"></script>
+    <script type="module" src="js/ui.js"></script>
+    <script type="module" src="js/app.js"></script>
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyBnA80pK9CTZmMezjIbQZnVa-vdXWNl8ho",
-            authDomain: "nrc-takip.firebaseapp.com",
-            databaseURL: "https://nrc-takip-default-rtdb.firebaseio.com",
-            projectId: "nrc-takip",
-            storageBucket: "nrc-takip.firebasestorage.app",
-            messagingSenderId: "844697253551",
-            appId: "1:844697253551:web:5c92aa497e4b63c674465a"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-
-        // Make db available globally
-        window.firestoreDB = db;
-    </script>
-
-    <!-- Custom JS -->
-    <script src="js/firestore-utils.js"></script>
-    <script src="js/storage.js"></script>
-    <script src="js/ui.js"></script>
-    <script src="js/app.js"></script>
 </body>
 
 </html>
