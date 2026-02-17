@@ -9,7 +9,8 @@
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <!-- SheetJS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
     <!-- Custom CSS -->
     <link rel="stylesheet" href="css/style.css">
@@ -49,7 +50,13 @@
 
                     <div class="bulk-actions-wrapper">
                         <div class="bulk-actions">
-                            <span class="bulk-label">Uçak Bazlı Toplu Sil:</span>
+                            <div class="bulk-header">
+                                <span class="bulk-label">Uçak Bazlı Toplu Sil:</span>
+                                <label for="aircraftExcelInput" class="btn btn-primary btn-sm">
+                                    <span class="icon">📂</span> Excel İçe Aktar
+                                </label>
+                                <input type="file" id="aircraftExcelInput" accept=".xlsx,.xls" hidden>
+                            </div>
                             <div class="bulk-controls">
                                 <select id="bulk-aircraft-delete" class="filter-select">
                                     <option value="">Uçak Seçin</option>
@@ -87,6 +94,10 @@
                 <div class="manual-entry-section">
                     <div class="section-header">
                         <h3>2. Task Card Eşleştirme (TC -> Bölüm)</h3>
+                        <label for="tcExcelInput" class="btn btn-primary btn-sm">
+                            <span class="icon">📂</span> Excel İçe Aktar
+                        </label>
+                        <input type="file" id="tcExcelInput" accept=".xlsx,.xls" hidden>
                     </div>
 
                     <div class="entry-form">
