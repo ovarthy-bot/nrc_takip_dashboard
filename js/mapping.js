@@ -24,6 +24,12 @@ const MappingApp = {
             if (e.key === 'Enter') this.addAircraftEntry();
         });
 
+        // Aircraft Excel Import
+        const aircraftExcelInput = document.getElementById('aircraftExcelInput');
+        if (aircraftExcelInput) {
+            aircraftExcelInput.addEventListener('change', (e) => this.handleExcelExport(e, 'aircraft'));
+        }
+
         // Bulk Delete Event
         document.getElementById('bulk-delete-btn').addEventListener('click', () => this.bulkDeleteByAircraft());
 
@@ -32,6 +38,82 @@ const MappingApp = {
         document.getElementById('new-tc').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') this.addTaskCardEntry();
         });
+
+        // Task Card Excel Import
+        const tcExcelInput = document.getElementById('tcExcelInput');
+        if (tcExcelInput) {
+            tcExcelInput.addEventListener('change', (e) => this.handleExcelExport(e, 'tc'));
+        }
+    },
+
+    handleExcelExport: function (e, type) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            try {
+                const data = new Uint8Array(event.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+
+                if (json.length < 2) {
+                    alert('Excel dosyası boş veya beklenen formatta değil.');
+                    return;
+                }
+
+                if (type === 'aircraft') {
+                    // Aircraft Mapping: Col 2 (index 1) = WO, Col 25 (index 24) = Aircraft Name
+                    let count = 0;
+                    for (let i = 1; i < json.length; i++) {
+                        const row = json[i];
+                        const wo = String(row[1] || '').trim();
+                        const aircraft = String(row[24] || '').trim();
+
+                        if (wo && aircraft) {
+                            this.state.mapping[wo] = aircraft;
+                            if (!this.state.woNumbers.includes(wo)) {
+                                this.state.woNumbers.push(wo);
+                            }
+                            count++;
+                        }
+                    }
+                    this.state.woNumbers.sort();
+                    alert(`${count} adet uçak eşleştirmesi içe aktarıldı.`);
+                } else if (type === 'tc') {
+                    // Task Card Mapping: Col 1 (index 0) = TC, Col 2 (index 1) = Dept
+                    let count = 0;
+                    const validDepts = ["Cabin", "Ortak Cabin", "TEKSTIL", "AVI", "MEC", "STR", "OTHER"];
+                    for (let i = 1; i < json.length; i++) {
+                        const row = json[i];
+                        const tc = String(row[0] || '').trim();
+                        let dept = String(row[1] || '').trim();
+
+                        // Normalize department name to match our list
+                        const matchedDept = validDepts.find(d => d.toUpperCase() === dept.toUpperCase());
+
+                        if (tc && matchedDept) {
+                            this.state.tcMapping[tc] = matchedDept;
+                            if (!this.state.tcNumbers.includes(tc)) {
+                                this.state.tcNumbers.push(tc);
+                            }
+                            count++;
+                        }
+                    }
+                    this.state.tcNumbers.sort();
+                    alert(`${count} adet task card eşleştirmesi içe aktarıldı.`);
+                }
+
+                this.render();
+                // Clear input
+                e.target.value = '';
+            } catch (err) {
+                console.error(err);
+                alert('Dosya okunurken hata oluştu: ' + err.message);
+            }
+        };
+        reader.readAsArrayBuffer(file);
     },
 
     addAircraftEntry: function () {
