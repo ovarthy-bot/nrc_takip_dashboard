@@ -226,7 +226,7 @@ const MappingApp = {
         if (mainData && mainData.data) {
             const woSet = new Set();
             mainData.data.forEach(row => {
-                const wo = row[2]; // WO column
+                const wo = row[2] ? String(row[2]).trim() : null; // Ensure string/trimmed
                 if (wo) woSet.add(wo);
             });
             this.state.woNumbers = Array.from(woSet).sort();
@@ -370,7 +370,7 @@ const MappingApp = {
 
         if (type === 'aircraft') {
             delete this.state.mapping[id];
-            this.state.woNumbers = this.state.woNumbers.filter(wo => wo !== id);
+            this.state.woNumbers = this.state.woNumbers.filter(wo => String(wo) !== String(id));
         } else {
             delete this.state.tcMapping[id];
             this.state.tcNumbers = this.state.tcNumbers.filter(tc => tc !== id);
