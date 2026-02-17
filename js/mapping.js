@@ -30,8 +30,9 @@ const MappingApp = {
             aircraftExcelInput.addEventListener('change', (e) => this.handleExcelExport(e, 'aircraft'));
         }
 
-        // Bulk Delete Event
+        // Bulk Actions
         document.getElementById('bulk-delete-btn').addEventListener('click', () => this.bulkDeleteByAircraft());
+        document.getElementById('delete-all-aircraft-btn').addEventListener('click', () => this.deleteAllAircraftMappings());
 
         // Task Card Mapping Events
         document.getElementById('add-tc-entry-btn').addEventListener('click', () => this.addTaskCardEntry());
@@ -44,6 +45,23 @@ const MappingApp = {
         if (tcExcelInput) {
             tcExcelInput.addEventListener('change', (e) => this.handleExcelExport(e, 'tc'));
         }
+
+        // Use Event Delegation for Delete Buttons
+        document.getElementById('mapping-tbody').addEventListener('click', (e) => {
+            const btn = e.target.closest('.btn-delete');
+            if (btn) {
+                const tr = btn.closest('tr');
+                if (tr) this.deleteEntry('aircraft', tr.dataset.id);
+            }
+        });
+
+        document.getElementById('tc-mapping-tbody').addEventListener('click', (e) => {
+            const btn = e.target.closest('.btn-delete');
+            if (btn) {
+                const tr = btn.closest('tr');
+                if (tr) this.deleteEntry('tc', tr.dataset.id);
+            }
+        });
     },
 
     handleExcelExport: function (e, type) {
@@ -58,7 +76,7 @@ const MappingApp = {
                 const sheet = workbook.Sheets[workbook.SheetNames[0]];
                 const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
 
-                if (json.length < 2) {
+                if (!json || json.length < 2) {
                     alert('Excel dosyası boş veya beklenen formatta değil.');
                     return;
                 }
@@ -68,6 +86,8 @@ const MappingApp = {
                     let count = 0;
                     for (let i = 1; i < json.length; i++) {
                         const row = json[i];
+                        if (!row || row.length < 2) continue;
+
                         const wo = String(row[1] || '').trim();
                         const aircraft = String(row[24] || '').trim();
 
@@ -80,18 +100,20 @@ const MappingApp = {
                         }
                     }
                     this.state.woNumbers.sort();
-                    alert(`${count} adet uçak eşleştirmesi içe aktarıldı.`);
+                    alert(`${count} adet uçak eşleştirmesi içe aktarıldı. Kaydetmeyi unutmayın!`);
                 } else if (type === 'tc') {
                     // Task Card Mapping: Col 1 (index 0) = TC, Col 2 (index 1) = Dept
                     let count = 0;
                     const validDepts = ["Cabin", "Ortak Cabin", "TEKSTIL", "AVI", "MEC", "STR", "OTHER"];
                     for (let i = 1; i < json.length; i++) {
                         const row = json[i];
+                        if (!row || row.length < 1) continue;
+
                         const tc = String(row[0] || '').trim();
-                        let dept = String(row[1] || '').trim();
+                        let deptRaw = String(row[1] || '').trim();
 
                         // Normalize department name to match our list
-                        const matchedDept = validDepts.find(d => d.toUpperCase() === dept.toUpperCase());
+                        const matchedDept = validDepts.find(d => d.toUpperCase() === deptRaw.toUpperCase());
 
                         if (tc && matchedDept) {
                             this.state.tcMapping[tc] = matchedDept;
@@ -102,7 +124,7 @@ const MappingApp = {
                         }
                     }
                     this.state.tcNumbers.sort();
-                    alert(`${count} adet task card eşleştirmesi içe aktarıldı.`);
+                    alert(`${count} adet task card eşleştirmesi içe aktarıldı. Kaydetmeyi unutmayın!`);
                 }
 
                 this.render();
@@ -149,7 +171,7 @@ const MappingApp = {
             return;
         }
 
-        if (!confirm(`${aircraftName} uçağına bağlı tüm WO kayıtlarını silmek istediğinize emin misiniz?`)) return;
+        if (!confirm(`${aircraftName} uçağına bağlı tüm WO kayıtlarını listeden silmek istediğinize emin misiniz? (Kalıcı olması için 'Kaydet' butonuna basmanız gerekir)`)) return;
 
         // Filter out WOs mapped to this aircraft
         const newMapping = {};
@@ -166,7 +188,16 @@ const MappingApp = {
         this.state.woNumbers = this.state.woNumbers.filter(wo => !deletedWOs.includes(wo));
 
         this.render();
-        alert(`${deletedWOs.length} adet kayıt silindi.`);
+        alert(`${deletedWOs.length} adet kayıt listeden kaldırıldı. Kalıcı olması için 'Kaydet' butonuna basın.`);
+    },
+
+    deleteAllAircraftMappings: function () {
+        if (!confirm('TÜM uçak eşleştirme verilerini listeden silmek istediğinize emin misiniz? (Kalıcı olması için "Kaydet" butonuna basmanız gerekir)')) return;
+
+        this.state.mapping = {};
+        this.state.woNumbers = [];
+        this.render();
+        alert('Tüm uçak eşleştirmeleri listeden kaldırıldı. Kaydederek işlemi tamamlayabilirsiniz.');
     },
 
     addTaskCardEntry: function () {
@@ -290,7 +321,7 @@ const MappingApp = {
                 <td class="tight-cell">${wo}</td>
                 <td><input type="text" class="aircraft-input" value="${this.state.mapping[wo] || ''}" placeholder="Uçak ismi..."></td>
                 <td style="width: 50px; text-align: center;">
-                    <button class="btn btn-sm btn-delete" title="Sil" onclick="window.MappingApp.deleteEntry('aircraft', '${wo}')">🗑️</button>
+                    <button class="btn btn-sm btn-delete" title="Sil">🗑️</button>
                 </td>
             `;
             aircraftTbody.appendChild(tr);
@@ -316,7 +347,7 @@ const MappingApp = {
                     </select>
                 </td>
                 <td style="width: 50px; text-align: center;">
-                    <button class="btn btn-sm btn-delete" title="Sil" onclick="window.MappingApp.deleteEntry('tc', '${tc}')">🗑️</button>
+                    <button class="btn btn-sm btn-delete" title="Sil">🗑️</button>
                 </td>
             `;
             tcTbody.appendChild(tr);
@@ -324,7 +355,7 @@ const MappingApp = {
     },
 
     deleteEntry: function (type, id) {
-        if (!confirm('Bu eşleştirmeyi silmek istediğinize emin misiniz?')) return;
+        if (!confirm('Bu eşleştirmeyi listeden kaldırmak istediğinize emin misiniz? (Kalıcı olması için "Kaydet"e basın)')) return;
 
         if (type === 'aircraft') {
             delete this.state.mapping[id];
@@ -337,6 +368,6 @@ const MappingApp = {
     }
 };
 
-window.MappingApp = MappingApp; // Make accessible globally for onclick
+window.MappingApp = MappingApp; // Keep but mostly use event delegation
 document.addEventListener('DOMContentLoaded', () => MappingApp.init());
 export default MappingApp;
