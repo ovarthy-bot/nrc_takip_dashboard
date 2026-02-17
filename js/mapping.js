@@ -6,7 +6,8 @@ const MappingApp = {
         woNumbers: [],
         tcNumbers: [],
         mapping: {}, // WO -> Aircraft Name
-        tcMapping: {} // TaskCard -> Department
+        tcMapping: {}, // TaskCard -> Department
+        excludedWOs: [] // Persistent deleted WOs
     },
 
     init: async function () {
@@ -149,6 +150,9 @@ const MappingApp = {
         }
 
         this.state.mapping[wo] = aircraft;
+        // If it was excluded, it's not anymore
+        this.state.excludedWOs = this.state.excludedWOs.filter(id => id !== wo);
+
         if (!this.state.woNumbers.includes(wo)) {
             this.state.woNumbers.push(wo);
             this.state.woNumbers.sort();
@@ -191,6 +195,13 @@ const MappingApp = {
 
     deleteAllAircraftMappings: function () {
         if (!confirm('TÜM uçak eşleştirme verilerini listeden silmek istediğinize emin misiniz? (Kalıcı olması için "Kaydet" butonuna basmanız gerekir)')) return;
+
+        // Add all current WOs to excluded list
+        this.state.woNumbers.forEach(wo => {
+            if (!this.state.excludedWOs.includes(wo)) {
+                this.state.excludedWOs.push(wo);
+            }
+        });
 
         this.state.mapping = {};
         this.state.woNumbers = [];
@@ -238,15 +249,22 @@ const MappingApp = {
         if (mainData && mainData.data) {
             const woSet = new Set();
             mainData.data.forEach(row => {
-                const wo = row[2] ? String(row[2]).trim() : null; // Ensure string/trimmed
+                const wo = row[2] ? String(row[2]).trim() : null;
                 if (wo) woSet.add(wo);
             });
-            this.state.woNumbers = Array.from(woSet).sort();
+            this.state.woNumbers = Array.from(woSet);
         }
 
         // Load mappings
-        this.state.mapping = await Storage.loadMapping();
+        const mappingRes = await Storage.loadMapping();
+        this.state.mapping = mappingRes.mapping || {};
+        this.state.excludedWOs = mappingRes.excludedWOs || [];
+
+        // Load Task Card mappings
         this.state.tcMapping = await Storage.loadTaskCardMapping();
+
+        // Filter woNumbers by excluded list
+        this.state.woNumbers = this.state.woNumbers.filter(wo => !this.state.excludedWOs.includes(wo)).sort();
 
         // Task Card Mapping is manual-only now: only show what is mapped
         this.state.tcNumbers = Object.keys(this.state.tcMapping).sort();
@@ -258,7 +276,7 @@ const MappingApp = {
     saveAllMappings: async function () {
         this.showLoading(true);
         // We save the state directly now, as render ensures state is always up to date
-        const s1 = await Storage.saveMapping(this.state.mapping);
+        const s1 = await Storage.saveMapping(this.state.mapping, this.state.excludedWOs);
         const s2 = await Storage.saveTaskCardMapping(this.state.tcMapping);
 
         this.showLoading(false);
@@ -372,8 +390,13 @@ const MappingApp = {
         if (!confirm('Bu eşleştirmeyi listeden kaldırmak istediğinize emin misiniz? (Kalıcı olması için "Kaydet"e basın)')) return;
 
         if (type === 'aircraft') {
-            delete this.state.mapping[id];
-            this.state.woNumbers = this.state.woNumbers.filter(wo => String(wo) !== String(id));
+            const idStr = String(id);
+            delete this.state.mapping[idStr];
+            // Add to excluded list for persistence
+            if (!this.state.excludedWOs.includes(idStr)) {
+                this.state.excludedWOs.push(idStr);
+            }
+            this.state.woNumbers = this.state.woNumbers.filter(wo => String(wo) !== idStr);
         } else {
             delete this.state.tcMapping[id];
             this.state.tcNumbers = this.state.tcNumbers.filter(tc => tc !== id);
