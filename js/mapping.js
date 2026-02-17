@@ -46,32 +46,6 @@ const MappingApp = {
             tcExcelInput.addEventListener('change', (e) => this.handleExcelExport(e, 'tc'));
         }
 
-        // Use Event Delegation for Delete Buttons - Using simpler event attachment
-        const aircraftTbody = document.getElementById('mapping-tbody');
-        if (aircraftTbody) {
-            aircraftTbody.addEventListener('click', (e) => {
-                const btn = e.target.closest('.btn-delete');
-                if (btn) {
-                    const tr = btn.closest('tr');
-                    if (tr && tr.dataset.id) {
-                        this.deleteEntry('aircraft', tr.dataset.id);
-                    }
-                }
-            });
-        }
-
-        const tcTbody = document.getElementById('tc-mapping-tbody');
-        if (tcTbody) {
-            tcTbody.addEventListener('click', (e) => {
-                const btn = e.target.closest('.btn-delete');
-                if (btn) {
-                    const tr = btn.closest('tr');
-                    if (tr && tr.dataset.id) {
-                        this.deleteEntry('tc', tr.dataset.id);
-                    }
-                }
-            });
-        }
     },
 
     handleExcelExport: function (e, type) {
@@ -345,6 +319,14 @@ const MappingApp = {
                     <button class="btn btn-sm btn-delete" title="Sil">🗑️</button>
                 </td>
             `;
+
+            // Attach delete listener directly
+            const deleteBtn = tr.querySelector('.btn-delete');
+            deleteBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.deleteEntry('aircraft', wo);
+            });
+
             aircraftTbody.appendChild(tr);
         });
 
@@ -371,6 +353,14 @@ const MappingApp = {
                     <button class="btn btn-sm btn-delete" title="Sil">🗑️</button>
                 </td>
             `;
+
+            // Attach delete listener directly
+            const deleteBtn = tr.querySelector('.btn-delete');
+            deleteBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.deleteEntry('tc', tc);
+            });
+
             tcTbody.appendChild(tr);
         });
     },
