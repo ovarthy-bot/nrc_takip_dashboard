@@ -57,11 +57,12 @@ const Storage = {
     },
 
     // Save aircraft mapping (WO -> Aircraft Name)
-    saveMapping: async function (mappingData) {
+    saveMapping: async function (mappingData, excludedWOs = []) {
         try {
             const docRef = doc(db, this.COLLECTION, this.DOC_MAPPING);
             await setDoc(docRef, {
                 mapping: mappingData,
+                excludedWOs: excludedWOs,
                 lastUpdated: new Date().toISOString()
             });
             console.log('Mapping data saved to Firebase');
@@ -81,10 +82,14 @@ const Storage = {
 
             if (docSnap.exists()) {
                 console.log('Mapping data loaded from Firebase');
-                return docSnap.data().mapping || {};
+                const data = docSnap.data();
+                return {
+                    mapping: data.mapping || {},
+                    excludedWOs: data.excludedWOs || []
+                };
             } else {
                 console.log('No mapping data found');
-                return {};
+                return { mapping: {}, excludedWOs: [] };
             }
         } catch (e) {
             console.error('Error loading mapping from Firebase:', e);
