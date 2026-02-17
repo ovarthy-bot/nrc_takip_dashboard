@@ -46,22 +46,32 @@ const MappingApp = {
             tcExcelInput.addEventListener('change', (e) => this.handleExcelExport(e, 'tc'));
         }
 
-        // Use Event Delegation for Delete Buttons
-        document.getElementById('mapping-tbody').addEventListener('click', (e) => {
-            const btn = e.target.closest('.btn-delete');
-            if (btn) {
-                const tr = btn.closest('tr');
-                if (tr) this.deleteEntry('aircraft', tr.dataset.id);
-            }
-        });
+        // Use Event Delegation for Delete Buttons - Using simpler event attachment
+        const aircraftTbody = document.getElementById('mapping-tbody');
+        if (aircraftTbody) {
+            aircraftTbody.addEventListener('click', (e) => {
+                const btn = e.target.closest('.btn-delete');
+                if (btn) {
+                    const tr = btn.closest('tr');
+                    if (tr && tr.dataset.id) {
+                        this.deleteEntry('aircraft', tr.dataset.id);
+                    }
+                }
+            });
+        }
 
-        document.getElementById('tc-mapping-tbody').addEventListener('click', (e) => {
-            const btn = e.target.closest('.btn-delete');
-            if (btn) {
-                const tr = btn.closest('tr');
-                if (tr) this.deleteEntry('tc', tr.dataset.id);
-            }
-        });
+        const tcTbody = document.getElementById('tc-mapping-tbody');
+        if (tcTbody) {
+            tcTbody.addEventListener('click', (e) => {
+                const btn = e.target.closest('.btn-delete');
+                if (btn) {
+                    const tr = btn.closest('tr');
+                    if (tr && tr.dataset.id) {
+                        this.deleteEntry('tc', tr.dataset.id);
+                    }
+                }
+            });
+        }
     },
 
     handleExcelExport: function (e, type) {
@@ -105,6 +115,7 @@ const MappingApp = {
                     // Task Card Mapping: Col 1 (index 0) = TC, Col 2 (index 1) = Dept
                     let count = 0;
                     const validDepts = ["Cabin", "Ortak Cabin", "TEKSTIL", "AVI", "MEC", "STR", "OTHER"];
+
                     for (let i = 1; i < json.length; i++) {
                         const row = json[i];
                         if (!row || row.length < 1) continue;
@@ -112,10 +123,16 @@ const MappingApp = {
                         const tc = String(row[0] || '').trim();
                         let deptRaw = String(row[1] || '').trim();
 
-                        // Normalize department name to match our list
-                        const matchedDept = validDepts.find(d => d.toUpperCase() === deptRaw.toUpperCase());
+                        if (!tc) continue;
 
-                        if (tc && matchedDept) {
+                        // Normalize department name to match our list
+                        // Also handle "TEKSTİL" (with İ) common in TR locale
+                        const matchedDept = validDepts.find(d =>
+                            d.toUpperCase().replace('İ', 'I') === deptRaw.toUpperCase().replace('İ', 'I') ||
+                            d.toUpperCase() === deptRaw.toUpperCase()
+                        );
+
+                        if (matchedDept) {
                             this.state.tcMapping[tc] = matchedDept;
                             if (!this.state.tcNumbers.includes(tc)) {
                                 this.state.tcNumbers.push(tc);
@@ -124,7 +141,11 @@ const MappingApp = {
                         }
                     }
                     this.state.tcNumbers.sort();
-                    alert(`${count} adet task card eşleştirmesi içe aktarıldı. Kaydetmeyi unutmayın!`);
+                    if (count === 0) {
+                        alert('Eşleşen veri bulunamadı. Lütfen Excel formatını kontrol edin: \n1. Sütun: Task Card No\n2. Sütun: Bölüm (Cabin, AVI, vb.)');
+                    } else {
+                        alert(`${count} adet task card eşleştirmesi içe aktarıldı. Kaydetmeyi unutmayın!`);
+                    }
                 }
 
                 this.render();
