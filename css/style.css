@@ -521,94 +521,103 @@ th select {
         display: flex;
     }
 
-    /* Mapping Page Mobile Refinements (Round 3) */
+    /* Mapping Page Mobile Refinements */
     .mapping-container {
-        padding: 5px;
+        padding: 10px;
         max-height: none;
         width: 100% !important;
         box-sizing: border-box;
         margin: 0 !important;
         border-radius: 0;
+        overflow-y: visible;
+        /* Allow body scroll for better experience */
     }
 
     .mapping-grid {
         display: flex;
+        /* Stack sections vertically */
         flex-direction: column;
-        gap: 15px;
+        gap: 20px;
     }
 
     .mapping-info {
-        font-size: 0.75rem;
-        padding: 8px;
-        margin-bottom: 10px;
+        font-size: 0.85rem;
+        padding: 12px;
+        margin-bottom: 5px;
     }
 
     .manual-entry-section {
-        padding: 10px;
+        padding: 15px;
+        min-height: auto;
     }
 
     .section-header h3 {
-        font-size: 0.9rem;
+        font-size: 1rem;
     }
 
     .entry-form {
         flex-direction: column;
         align-items: stretch;
-        gap: 5px;
+        gap: 8px;
     }
 
     .entry-form input,
     .entry-form select,
     .entry-form button {
         width: 100% !important;
-        margin-bottom: 0 !important;
-        font-size: 0.8rem;
-        height: 34px;
-        padding: 6px 10px;
+        margin: 0 !important;
+        font-size: 0.9rem;
+        height: 40px;
+        padding: 8px 12px;
     }
 
     .bulk-actions-wrapper {
-        margin-bottom: 10px;
+        margin-bottom: 15px;
     }
 
     .bulk-actions {
         flex-direction: column;
         align-items: stretch !important;
-        padding: 6px !important;
-        gap: 6px !important;
+        padding: 10px !important;
+        gap: 8px !important;
     }
 
     .bulk-controls {
         display: flex;
         flex-direction: column;
-        gap: 5px;
+        gap: 8px;
     }
 
     .bulk-label {
-        font-size: 0.75rem !important;
+        font-size: 0.8rem !important;
     }
 
     .bulk-actions select,
     .bulk-actions button {
         width: 100% !important;
-        font-size: 0.75rem !important;
-        height: 32px;
+        font-size: 0.85rem !important;
+        height: 38px;
     }
 
     .mapping-container table {
-        font-size: 0.7rem;
-        table-layout: fixed;
-        width: 100%;
+        font-size: 0.8rem;
+        table-layout: auto;
+        /* Allow content to dictate width */
+        min-width: 300px;
     }
 
     .mapping-container th,
     .mapping-container td {
-        padding: 4px 2px;
+        padding: 8px 4px;
+    }
+
+    .mapping-container .table-wrapper {
+        max-height: 400px;
     }
 
     .btn-delete {
-        padding: 2px 4px !important;
-        font-size: 0.7rem;
+        padding: 4px 8px !important;
+        font-size: 0.9rem;
     }
 }
 
@@ -678,6 +687,62 @@ th select {
     border-color: transparent;
 }
 
+/* Desktop Table Note Styles */
+.note-cell-wrapper {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    min-width: 150px;
+}
+
+.table-note-textarea {
+    flex-grow: 1;
+    background-color: var(--input-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 0.85rem;
+    resize: vertical;
+    min-height: 40px;
+    font-family: inherit;
+}
+
+.btn-delete-note {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 1.1rem;
+    padding: 0;
+    opacity: 0.6;
+    transition: opacity 0.2s;
+}
+
+.btn-delete-note:hover {
+    opacity: 1;
+}
+
+/* Mobile Card Note Header */
+.card-note-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.btn-delete-note-mobile {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 1.1rem;
+    padding: 4px;
+    opacity: 0.6;
+}
+
+.btn-delete-note-mobile:hover {
+    opacity: 1;
+}
+
 /* Mapping Page Styles */
 .mapping-container {
     max-width: 1200px;
@@ -742,6 +807,13 @@ th select {
     border-radius: var(--border-radius);
     display: flex;
     flex-direction: column;
+    gap: 10px;
+}
+
+.bulk-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     gap: 10px;
 }
 
