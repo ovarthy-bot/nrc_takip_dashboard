@@ -140,6 +140,30 @@ const UI = {
                     });
                     select.onchange = (e) => window.App.updateDepartment(row, e.target.value);
                     td.appendChild(select);
+                } else if (headers[i] === 'Not') {
+                    const noteWrapper = document.createElement('div');
+                    noteWrapper.className = 'note-cell-wrapper';
+
+                    const textarea = document.createElement('textarea');
+                    textarea.className = 'table-note-textarea';
+                    textarea.value = cell || '';
+                    textarea.placeholder = 'Not...';
+                    textarea.onchange = (e) => window.App.updateNote(row, e.target.value);
+
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.className = 'btn-delete-note';
+                    deleteBtn.innerHTML = '🗑️';
+                    deleteBtn.title = 'Notu Sil';
+                    deleteBtn.onclick = () => {
+                        if (confirm('Notu silmek istediğinize emin misiniz?')) {
+                            textarea.value = '';
+                            window.App.updateNote(row, '');
+                        }
+                    };
+
+                    noteWrapper.appendChild(textarea);
+                    noteWrapper.appendChild(deleteBtn);
+                    td.appendChild(noteWrapper);
                 } else {
                     td.textContent = cell;
                 }
@@ -220,8 +244,19 @@ const UI = {
             const noteDiv = document.createElement('div');
             noteDiv.className = 'card-note';
 
+            const noteHeader = document.createElement('div');
+            noteHeader.className = 'card-note-header';
+
             const noteLabel = document.createElement('label');
             noteLabel.textContent = 'Notlar:';
+
+            const deleteNoteBtn = document.createElement('button');
+            deleteNoteBtn.className = 'btn-delete-note-mobile';
+            deleteNoteBtn.innerHTML = '🗑️';
+            deleteNoteBtn.title = 'Notu Sil';
+
+            noteHeader.appendChild(noteLabel);
+            noteHeader.appendChild(deleteNoteBtn);
 
             const noteInput = document.createElement('textarea');
             noteInput.placeholder = 'Not ekle...';
@@ -230,9 +265,16 @@ const UI = {
             if (noteIndex !== -1) {
                 noteInput.value = row[noteIndex] || '';
                 noteInput.onchange = (e) => window.App.updateNote(row, e.target.value);
+
+                deleteNoteBtn.onclick = () => {
+                    if (confirm('Notu silmek istediğinize emin misiniz?')) {
+                        noteInput.value = '';
+                        window.App.updateNote(row, '');
+                    }
+                };
             }
 
-            noteDiv.appendChild(noteLabel);
+            noteDiv.appendChild(noteHeader);
             noteDiv.appendChild(noteInput);
             card.appendChild(noteDiv);
 
