@@ -33,6 +33,10 @@ const MappingApp = {
         // Bulk Actions
         document.getElementById('bulk-delete-btn').addEventListener('click', () => this.bulkDeleteByAircraft());
         document.getElementById('delete-all-aircraft-btn').addEventListener('click', () => this.deleteAllAircraftMappings());
+        const delAllTcBtn = document.getElementById('delete-all-tc-btn');
+        if (delAllTcBtn) {
+            delAllTcBtn.addEventListener('click', () => this.deleteAllTaskCardMappings());
+        }
 
         // Task Card Mapping Events
         document.getElementById('add-tc-entry-btn').addEventListener('click', () => this.addTaskCardEntry());
@@ -45,7 +49,6 @@ const MappingApp = {
         if (tcExcelInput) {
             tcExcelInput.addEventListener('change', (e) => this.handleExcelExport(e, 'tc'));
         }
-
     },
 
     handleExcelExport: function (e, type) {
@@ -195,6 +198,15 @@ const MappingApp = {
         alert('Tüm uçak eşleştirmeleri listeden kaldırıldı. Kaydederek işlemi tamamlayabilirsiniz.');
     },
 
+    deleteAllTaskCardMappings: function () {
+        if (!confirm('TÜM Task Card eşleştirme verilerini listeden silmek istediğinize emin misiniz? (Kalıcı olması için "Kaydet" butonuna basmanız gerekir)')) return;
+
+        this.state.tcMapping = {};
+        this.state.tcNumbers = [];
+        this.render();
+        alert('Tüm Task Card eşleştirmeleri listeden kaldırıldı. Kaydederek işlemi tamamlayabilirsiniz.');
+    },
+
     addTaskCardEntry: function () {
         const tcInput = document.getElementById('new-tc');
         const deptInput = document.getElementById('new-dept');
@@ -244,35 +256,14 @@ const MappingApp = {
     },
 
     saveAllMappings: async function () {
-        // Collect Aircraft Mapping
-        const woRows = document.querySelectorAll('#mapping-tbody tr');
-        const aircraftMapping = {};
-        woRows.forEach(row => {
-            const wo = row.dataset.id;
-            const input = row.querySelector('input');
-            if (input && input.value.trim()) {
-                aircraftMapping[wo] = input.value.trim();
-            }
-        });
+        this.showLoading(true);
+        // We save the state directly now, as render ensures state is always up to date
+        const s1 = await Storage.saveMapping(this.state.mapping);
+        const s2 = await Storage.saveTaskCardMapping(this.state.tcMapping);
 
-        // Collect Task Card Mapping
-        const tcRows = document.querySelectorAll('#tc-mapping-tbody tr');
-        const tcMapping = {};
-        tcRows.forEach(row => {
-            const tc = row.dataset.id;
-            const select = row.querySelector('select');
-            if (select && select.value) {
-                tcMapping[tc] = select.value;
-            }
-        });
-
-        const s1 = await Storage.saveMapping(aircraftMapping);
-        const s2 = await Storage.saveTaskCardMapping(tcMapping);
-
+        this.showLoading(false);
         if (s1 && s2) {
             alert('Tüm eşleştirme verileri başarıyla kaydedildi!');
-            this.state.mapping = aircraftMapping;
-            this.state.tcMapping = tcMapping;
         }
     },
 
@@ -320,6 +311,12 @@ const MappingApp = {
                 </td>
             `;
 
+            // Sync input changes to state immediately
+            const input = tr.querySelector('.aircraft-input');
+            input.addEventListener('input', (e) => {
+                this.state.mapping[wo] = e.target.value.trim();
+            });
+
             // Attach delete listener directly
             const deleteBtn = tr.querySelector('.btn-delete');
             deleteBtn.addEventListener('click', (e) => {
@@ -353,6 +350,12 @@ const MappingApp = {
                     <button class="btn btn-sm btn-delete" title="Sil">🗑️</button>
                 </td>
             `;
+
+            // Sync select changes to state immediately
+            const select = tr.querySelector('.dept-select');
+            select.addEventListener('change', (e) => {
+                this.state.tcMapping[tc] = e.target.value;
+            });
 
             // Attach delete listener directly
             const deleteBtn = tr.querySelector('.btn-delete');
