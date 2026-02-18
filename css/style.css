@@ -448,6 +448,15 @@ th select {
 }
 
 /* Card View (Mobile) */
+.dept-select {
+    min-width: 120px;
+    background-color: var(--input-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    border-radius: 4px;
+    padding: 4px;
+}
+
 .card-list {
     display: none;
     /* Hidden by default on desktop */
@@ -501,8 +510,8 @@ th select {
     }
 
     main {
-        padding: 8px 8px 24px 8px;
-        /* Extra bottom padding for mobile pagination */
+        padding: 8px 8px 60px 8px;
+        /* Further increased bottom padding for mobile navigation */
         flex: 1;
     }
 
