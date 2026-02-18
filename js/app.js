@@ -84,6 +84,11 @@ const App = {
             this.deleteSelectedAircraftData();
         });
 
+        // Clear all data button
+        document.getElementById('clear-all-data-btn').addEventListener('click', () => {
+            this.deleteAllDashboardData();
+        });
+
         // WO filter
         document.getElementById('wo-filter').addEventListener('change', (e) => {
             this.filterData('wo', e.target.value);
@@ -675,6 +680,29 @@ const App = {
 
         UI.toggleLoading(false);
         alert(`${aircraft} uçağına ait veriler silindi.`);
+    },
+
+    deleteAllDashboardData: async function () {
+        if (!confirm('TÜM dashboard verilerini silmek istediğinize emin misiniz? Bu işlem geri alınamaz.')) return;
+
+        UI.toggleLoading(true);
+
+        // Clear local state
+        this.state.allData = [];
+        this.state.filteredData = [];
+        this.state.lastImportTime = null;
+
+        // Save empty state to Firebase
+        await this.saveData();
+
+        // Refresh UI
+        this.populateAircraftFilter();
+        this.populateExtraFilters();
+        this.calculateStats();
+        this.render();
+
+        UI.toggleLoading(false);
+        alert('Tüm dashboard verileri silindi.');
     }
 };
 
