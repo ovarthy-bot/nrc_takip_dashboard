@@ -29,21 +29,32 @@ body {
 
 /* Header & Controls */
 header {
-    background-color: var(--surface-color);
-    box-shadow: var(--shadow);
+    background-color: transparent;
+    /* Remove background from full-width header */
     position: sticky;
     top: 0;
     z-index: 100;
-    padding: 8px 0;
+    padding: var(--spacing-md) 0 0 0;
+    /* Only top padding to separate from screen edge */
 }
 
 .header-container {
     max-width: 1400px;
     margin: 0 auto;
-    padding: 0 var(--spacing-md);
+    padding: var(--spacing-md);
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 8px;
+    background-color: var(--surface-color);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    box-sizing: border-box;
+}
+
+.filter-group {
+    display: flex;
+    gap: 8px;
+    align-items: center;
 }
 
 .header-main {
@@ -328,7 +339,8 @@ body {
 }
 
 main {
-    flex-grow: 1;
+    flex: 1;
+    /* Allow to fill remaining height */
     display: flex;
     flex-direction: column;
     padding: var(--spacing-md);
@@ -336,14 +348,18 @@ main {
     width: 100%;
     margin: 0 auto;
     overflow: hidden;
+    min-height: 0;
+    /* Critical for flex children to shrink/scroll correctly */
+    box-sizing: border-box;
 }
 
 .data-container {
-    flex-grow: 1;
+    flex: 1;
     display: flex;
     flex-direction: column;
     overflow: hidden;
     gap: var(--spacing-md);
+    min-height: 0;
 }
 
 .table-wrapper,
@@ -480,9 +496,19 @@ th select {
 
 /* Responsive Breakpoint */
 @media (max-width: 768px) {
+    header {
+        padding: 8px 0 0 0;
+    }
+
     main {
-        padding: 8px;
-        /* Narrower padding for mobile main container */
+        padding: 8px 8px 24px 8px;
+        /* Extra bottom padding for mobile pagination */
+        flex: 1;
+    }
+
+    .header-container {
+        padding: 12px 8px;
+        /* Match main container padding on mobile */
     }
 
     .data-container {
