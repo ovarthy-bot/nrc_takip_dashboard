@@ -43,9 +43,14 @@
 
             <div class="header-row">
                 <!-- 1. Aircraft Filter -->
-                <select id="aircraft-filter" class="filter-select">
-                    <option value="">Uçak Tümü</option>
-                </select>
+                <div class="filter-group">
+                    <select id="aircraft-filter" class="filter-select">
+                        <option value="">Uçak Tümü</option>
+                    </select>
+                    <button id="delete-aircraft-data-btn" class="btn btn-danger btn-sm hidden">
+                        <span class="icon">🗑️</span> Seçili Uçağı Sil
+                    </button>
+                </div>
 
                 <!-- 2. Stats Bar -->
                 <div id="stats-bar" class="stats-bar hidden">
