@@ -480,6 +480,16 @@ th select {
 
 /* Responsive Breakpoint */
 @media (max-width: 768px) {
+    main {
+        padding: 8px;
+        /* Narrower padding for mobile main container */
+    }
+
+    .data-container {
+        gap: 8px;
+        /* Reduced gap between data items */
+    }
+
     .header-main {
         flex-direction: column;
         align-items: stretch;
@@ -525,6 +535,13 @@ th select {
 
     .card-list {
         display: flex;
+        gap: 8px;
+        /* Reduced gap between cards */
+    }
+
+    .card {
+        padding: 10px;
+        /* Narrower padding inside cards */
     }
 
     /* Mapping Page Mobile Refinements */
