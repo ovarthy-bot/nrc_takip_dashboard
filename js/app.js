@@ -68,7 +68,20 @@ const App = {
 
         // Aircraft filter
         document.getElementById('aircraft-filter').addEventListener('change', (e) => {
-            this.filterData('aircraft', e.target.value);
+            const val = e.target.value;
+            this.filterData('aircraft', val);
+            // Toggle delete button visibility
+            const delBtn = document.getElementById('delete-aircraft-data-btn');
+            if (val) {
+                delBtn.classList.remove('hidden');
+            } else {
+                delBtn.classList.add('hidden');
+            }
+        });
+
+        // Delete aircraft data button
+        document.getElementById('delete-aircraft-data-btn').addEventListener('click', () => {
+            this.deleteSelectedAircraftData();
         });
 
         // WO filter
@@ -630,6 +643,38 @@ const App = {
         const pageData = this.state.filteredData.slice(startIdx, endIdx);
 
         UI.showData(this.state.headers, pageData, this.state.stats, this.state.lastImportTime, this.state.pagination);
+    },
+
+    deleteSelectedAircraftData: async function () {
+        const aircraft = this.state.filters.aircraft;
+        if (!aircraft) return;
+
+        if (!confirm(`${aircraft} uçağına ait tüm dashboard verilerini silmek istediğinize emin misiniz?`)) return;
+
+        UI.toggleLoading(true);
+
+        // Filter out the data for the selected aircraft
+        // Aircraft Name is at index 0
+        const newData = this.state.allData.filter(row => row[0] !== aircraft);
+
+        this.state.allData = newData;
+        this.state.filteredData = newData; // Also update filtered data
+
+        // Save to Firebase
+        await this.saveData();
+
+        // Clear filter and hide button
+        this.state.filters.aircraft = '';
+        document.getElementById('aircraft-filter').value = '';
+        document.getElementById('delete-aircraft-data-btn').classList.add('hidden');
+
+        // Refresh UI
+        this.populateAircraftFilter();
+        this.calculateStats();
+        this.render();
+
+        UI.toggleLoading(false);
+        alert(`${aircraft} uçağına ait veriler silindi.`);
     }
 };
 
