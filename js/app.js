@@ -148,7 +148,8 @@ const App = {
         }
 
         // Load aircraft mapping
-        this.state.aircraftMapping = await Storage.loadMapping();
+        const mappingRes = await Storage.loadMapping();
+        this.state.aircraftMapping = mappingRes.mapping || {};
         // Load task card mapping
         this.state.taskCardMapping = await Storage.loadTaskCardMapping();
 
