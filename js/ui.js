@@ -110,8 +110,8 @@ const UI = {
             }
 
             // Specific columns tight (adjusted for new columns)
-            // Aircraft Name (0), Department (1), WO (2), Task Card (3), etc.
-            if ([0, 1, 2, 3, 5, 8, 9, 10].includes(index)) {
+            // Aircraft Name (0), WO (2), Task Card (3), etc. (1 removed to allow widen)
+            if ([0, 2, 3, 5, 8, 9, 10].includes(index)) {
                 th.classList.add('tight-cell');
             }
 
@@ -172,7 +172,7 @@ const UI = {
                 if (i === 4 || i === 6) td.classList.add('wrap-text');
 
                 // Tight cell columns
-                if ([0, 1, 2, 3, 5, 8, 9, 10].includes(i)) td.classList.add('tight-cell');
+                if ([0, 2, 3, 5, 8, 9, 10].includes(i)) td.classList.add('tight-cell');
 
                 tr.appendChild(td);
             });
