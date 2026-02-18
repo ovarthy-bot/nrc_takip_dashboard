@@ -21,94 +21,96 @@
 <body>
 
     <header>
-        <div class="header-main">
-            <h1 class="header-title">NRC Dashboard</h1>
-            <div class="search-bar">
-                <input type="text" id="search" placeholder="Ara (WO, Task Card, Status...)">
-            </div>
-            <div class="header-top-right">
-                <div id="last-import-time" class="timestamp">-</div>
-                <div class="controls">
-                    <label for="fileInput" class="btn btn-primary btn-sm">
-                        <span class="icon">📂</span> Excel Yükle
-                    </label>
-                    <input type="file" id="fileInput" accept=".xlsx,.xls" hidden>
-                    <a href="mapping.html" class="btn btn-secondary btn-sm">
-                        <span class="icon">✈️</span> Eşleştirme
-                    </a>
+        <div class="header-container">
+            <div class="header-main">
+                <h1 class="header-title">NRC Dashboard</h1>
+                <div class="search-bar">
+                    <input type="text" id="search" placeholder="Ara (WO, Task Card, Status...)">
                 </div>
-            </div>
-        </div>
-
-        <div class="header-row">
-            <!-- 1. Aircraft Filter -->
-            <select id="aircraft-filter" class="filter-select">
-                <option value="">Uçak Tümü</option>
-            </select>
-
-            <!-- 2. Stats Bar -->
-            <div id="stats-bar" class="stats-bar hidden">
-                <div class="stat-item stat-open">
-                    <span class="stat-label">OPEN</span>
-                    <span id="stat-open" class="stat-value">0</span>
-                </div>
-                <div class="stat-item stat-closed">
-                    <span class="stat-label">CLOSED</span>
-                    <span id="stat-closed" class="stat-value">0</span>
-                </div>
-                <div class="stat-item stat-defer">
-                    <span class="stat-label">DEFER</span>
-                    <span id="stat-defer" class="stat-value">0</span>
+                <div class="header-top-right">
+                    <div id="last-import-time" class="timestamp">-</div>
+                    <div class="controls">
+                        <label for="fileInput" class="btn btn-primary btn-sm">
+                            <span class="icon">📂</span> Excel Yükle
+                        </label>
+                        <input type="file" id="fileInput" accept=".xlsx,.xls" hidden>
+                        <a href="mapping.html" class="btn btn-secondary btn-sm">
+                            <span class="icon">✈️</span> Eşleştirme
+                        </a>
+                    </div>
                 </div>
             </div>
 
-            <!-- 3. Department Filters -->
-            <div id="filters-section" class="filters-section hidden">
-                <div class="department-checkboxes">
-                    <label class="checkbox-label">
-                        <input type="checkbox" value="Cabin" class="dept-checkbox"> <span>Cabin</span>
-                    </label>
-                    <label class="checkbox-label">
-                        <input type="checkbox" value="Ortak Cabin" class="dept-checkbox"> <span>Ortak Cabin</span>
-                    </label>
-                    <label class="checkbox-label">
-                        <input type="checkbox" value="TEKSTIL" class="dept-checkbox"> <span>TEKSTIL</span>
-                    </label>
-                    <label class="checkbox-label">
-                        <input type="checkbox" value="AVI" class="dept-checkbox"> <span>AVI</span>
-                    </label>
-                    <label class="checkbox-label">
-                        <input type="checkbox" value="MEC" class="dept-checkbox"> <span>MEC</span>
-                    </label>
-                    <label class="checkbox-label">
-                        <input type="checkbox" value="STR" class="dept-checkbox"> <span>STR</span>
-                    </label>
-                    <label class="checkbox-label">
-                        <input type="checkbox" value="OTHER" class="dept-checkbox"> <span>OTHER</span>
-                    </label>
+            <div class="header-row">
+                <!-- 1. Aircraft Filter -->
+                <select id="aircraft-filter" class="filter-select">
+                    <option value="">Uçak Tümü</option>
+                </select>
+
+                <!-- 2. Stats Bar -->
+                <div id="stats-bar" class="stats-bar hidden">
+                    <div class="stat-item stat-open">
+                        <span class="stat-label">OPEN</span>
+                        <span id="stat-open" class="stat-value">0</span>
+                    </div>
+                    <div class="stat-item stat-closed">
+                        <span class="stat-label">CLOSED</span>
+                        <span id="stat-closed" class="stat-value">0</span>
+                    </div>
+                    <div class="stat-item stat-defer">
+                        <span class="stat-label">DEFER</span>
+                        <span id="stat-defer" class="stat-value">0</span>
+                    </div>
                 </div>
+
+                <!-- 3. Department Filters -->
+                <div id="filters-section" class="filters-section hidden">
+                    <div class="department-checkboxes">
+                        <label class="checkbox-label">
+                            <input type="checkbox" value="Cabin" class="dept-checkbox"> <span>Cabin</span>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" value="Ortak Cabin" class="dept-checkbox"> <span>Ortak Cabin</span>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" value="TEKSTIL" class="dept-checkbox"> <span>TEKSTIL</span>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" value="AVI" class="dept-checkbox"> <span>AVI</span>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" value="MEC" class="dept-checkbox"> <span>MEC</span>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" value="STR" class="dept-checkbox"> <span>STR</span>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" value="OTHER" class="dept-checkbox"> <span>OTHER</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- 4. Extra Filters -->
+                <select id="wo-filter" class="filter-select">
+                    <option value="">WO Tümü</option>
+                </select>
+                <select id="status-filter" class="filter-select">
+                    <option value="">Status Tümü</option>
+                </select>
+                <select id="chapter-filter" class="filter-select">
+                    <option value="">Chapter Tümü</option>
+                </select>
+                <select id="tc-filter" class="filter-select">
+                    <option value="">Schedule Tümü</option>
+                </select>
             </div>
 
-            <!-- 4. Extra Filters -->
-            <select id="wo-filter" class="filter-select">
-                <option value="">WO Tümü</option>
-            </select>
-            <select id="status-filter" class="filter-select">
-                <option value="">Status Tümü</option>
-            </select>
-            <select id="chapter-filter" class="filter-select">
-                <option value="">Chapter Tümü</option>
-            </select>
-            <select id="tc-filter" class="filter-select">
-                <option value="">Schedule Tümü</option>
-            </select>
-        </div>
-
-        <div id="progress-container" class="progress-container hidden">
-            <div class="progress-bar">
-                <div id="progress-fill" class="progress-fill"></div>
+            <div id="progress-container" class="progress-container hidden">
+                <div class="progress-bar">
+                    <div id="progress-fill" class="progress-fill"></div>
+                </div>
+                <span id="progress-text">İşleniyor...</span>
             </div>
-            <span id="progress-text">İşleniyor...</span>
         </div>
     </header>
 
