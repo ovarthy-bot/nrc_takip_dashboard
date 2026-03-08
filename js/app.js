@@ -30,8 +30,10 @@ const App = {
         stats: {
             open: 0,
             closed: 0,
-            defer: 0
+            defer: 0,
+            cancel: 0
         },
+        activeStatusFilter: '', // currently pressed stat button value
         lastImportTime: null
     },
 
@@ -50,6 +52,16 @@ const App = {
         searchInput.addEventListener('input', (e) => {
             clearTimeout(searchTimeout);
             searchTimeout = setTimeout(() => this.handleSearch(e), 300);
+            // Show/hide clear button
+            this.updateSearchClearBtn();
+        });
+
+        // Search clear button
+        document.getElementById('search-clear-btn').addEventListener('click', () => {
+            searchInput.value = '';
+            this.filterData('global', '');
+            this.updateSearchClearBtn();
+            searchInput.focus();
         });
 
         // Mobile Keyboard Dismissal
@@ -96,11 +108,6 @@ const App = {
             this.filterData('wo', e.target.value);
         });
 
-        // Status filter
-        document.getElementById('status-filter').addEventListener('change', (e) => {
-            this.filterData('status', e.target.value);
-        });
-
         // Chapter filter
         document.getElementById('chapter-filter').addEventListener('change', (e) => {
             this.filterData('chapter', e.target.value);
@@ -116,6 +123,26 @@ const App = {
             checkbox.addEventListener('change', () => this.handleDepartmentFilter());
         });
 
+        // Stat buttons (OPEN / CLOSED / DEFER / CANCEL) — toggle filter
+        document.querySelectorAll('.stat-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const status = btn.dataset.status;
+                if (this.state.activeStatusFilter === status) {
+                    // Same button clicked again → deactivate filter
+                    this.state.activeStatusFilter = '';
+                    this.filterData('status', '');
+                    btn.classList.remove('active');
+                } else {
+                    // Activate new filter
+                    this.state.activeStatusFilter = status;
+                    this.filterData('status', status);
+                    // Update visual state
+                    document.querySelectorAll('.stat-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                }
+            });
+        });
+
         // Pagination controls
         document.getElementById('prev-page').addEventListener('click', () => this.changePage(-1));
         document.getElementById('next-page').addEventListener('click', () => this.changePage(1));
@@ -124,6 +151,16 @@ const App = {
             this.state.pagination.currentPage = 1;
             this.render();
         });
+    },
+
+    updateSearchClearBtn: function () {
+        const val = document.getElementById('search').value;
+        const btn = document.getElementById('search-clear-btn');
+        if (val) {
+            btn.classList.add('visible');
+        } else {
+            btn.classList.remove('visible');
+        }
     },
 
     loadData: async function () {
@@ -567,6 +604,7 @@ const App = {
         this.state.stats.open = 0;
         this.state.stats.closed = 0;
         this.state.stats.defer = 0;
+        this.state.stats.cancel = 0;
 
         this.state.filteredData.forEach(row => {
             const status = String(row[statusIdx] || '').toUpperCase();
@@ -576,6 +614,8 @@ const App = {
                 this.state.stats.closed++;
             } else if (status.includes('DEFER')) {
                 this.state.stats.defer++;
+            } else if (status.includes('CANCEL')) {
+                this.state.stats.cancel++;
             }
         });
     },
@@ -604,7 +644,6 @@ const App = {
             : this.state.allData;
 
         const filters = [
-            { id: 'status-filter', index: 9, label: 'Status' },
             { id: 'tc-filter', index: 7, label: 'Schedule' },
             { id: 'chapter-filter', index: 8, label: 'Chapter' },
             { id: 'wo-filter', index: 2, label: 'WO' }
@@ -614,17 +653,7 @@ const App = {
             const select = document.getElementById(f.id);
             if (!select) return;
 
-            // Handle dynamic status index
-            let idx = f.index;
-            if (f.id === 'status-filter') {
-                const statusHeaderIndex = this.state.headers.findIndex(h =>
-                    String(h).toUpperCase().includes('STATUS') ||
-                    String(h).toUpperCase() === 'DURUM'
-                );
-                idx = statusHeaderIndex !== -1 ? statusHeaderIndex : 9;
-            }
-
-            const unique = [...new Set(sourceData.map(row => String(row[idx] || '').trim()))].filter(v => v).sort();
+            const unique = [...new Set(sourceData.map(row => String(row[f.index] || '').trim()))].filter(v => v).sort();
             select.innerHTML = `<option value="">${f.label} Tümü</option>`;
             unique.forEach(val => {
                 const opt = document.createElement('option');
