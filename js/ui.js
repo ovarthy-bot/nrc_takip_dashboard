@@ -130,7 +130,7 @@ const UI = {
                 if (i === 1) {
                     const select = document.createElement('select');
                     select.className = 'dept-select';
-                    const departments = ['', 'Cabin', 'Ortak Cabin', 'TEKSTIL', 'AVI', 'MEC', 'STR', 'OTHER'];
+                    const departments = ['', 'Cabin', 'Ortak Cabin', 'TEKSTIL', 'AVI', 'MEC', 'STR', 'SEAT', 'KAPLAMA'];
                     departments.forEach(dept => {
                         const opt = document.createElement('option');
                         opt.value = dept;
@@ -221,7 +221,7 @@ const UI = {
                 if (i === 1) {
                     const select = document.createElement('select');
                     select.className = 'dept-select-mobile';
-                    const departments = ['', 'Cabin', 'Ortak Cabin', 'TEKSTIL', 'AVI', 'MEC', 'STR', 'OTHER'];
+                    const departments = ['', 'Cabin', 'Ortak Cabin', 'TEKSTIL', 'AVI', 'MEC', 'STR', 'SEAT', 'KAPLAMA'];
                     departments.forEach(dept => {
                         const opt = document.createElement('option');
                         opt.value = dept;
