@@ -70,6 +70,8 @@ const UI = {
         document.getElementById('stat-open').textContent = stats.open;
         document.getElementById('stat-closed').textContent = stats.closed;
         document.getElementById('stat-defer').textContent = stats.defer;
+        const cancelEl = document.getElementById('stat-cancel');
+        if (cancelEl) cancelEl.textContent = stats.cancel || 0;
 
         if (lastImportTime) {
             const date = new Date(lastImportTime);
