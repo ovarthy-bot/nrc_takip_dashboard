@@ -74,17 +74,48 @@ header {
 .search-bar {
     flex-grow: 1;
     max-width: 500px;
+    position: relative;
+    display: flex;
+    align-items: center;
 }
 
 .search-bar input {
     width: 100%;
-    padding: 6px 12px;
+    padding: 6px 32px 6px 12px;
+    /* right padding for clear button */
     background-color: var(--input-bg);
     border: 1px solid var(--border-color);
     color: var(--text-primary);
     border-radius: 4px;
     font-size: 0.9rem;
     box-sizing: border-box;
+}
+
+/* Search clear (×) button */
+.search-clear-btn {
+    position: absolute;
+    right: 6px;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.1rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 50%;
+    display: none;
+    /* hidden by default */
+    transition: color 0.2s;
+}
+
+.search-clear-btn.visible {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.search-clear-btn:hover {
+    color: var(--text-primary);
 }
 
 .controls {
@@ -135,13 +166,22 @@ header {
     gap: 12px;
     align-items: center;
     overflow-x: auto;
-    padding-bottom: 4px;
-    scrollbar-width: none;
-    /* Hide scrollbar for cleaner look */
+    padding-bottom: 6px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-color) transparent;
 }
 
 .header-row::-webkit-scrollbar {
-    display: none;
+    height: 5px;
+}
+
+.header-row::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.header-row::-webkit-scrollbar-thumb {
+    background-color: var(--border-color);
+    border-radius: 10px;
 }
 
 /* Stats Bar */
@@ -152,7 +192,8 @@ header {
     flex-shrink: 0;
 }
 
-.stat-item {
+/* stat-btn: clickable version of stat-item */
+.stat-btn {
     display: flex;
     align-items: center;
     gap: 6px;
@@ -161,15 +202,47 @@ header {
     border-radius: 4px;
     border: 1px solid var(--border-color);
     white-space: nowrap;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    font-family: inherit;
 }
 
-.stat-item.stat-open {
+.stat-btn:hover {
+    filter: brightness(1.15);
+    border-color: currentColor;
+}
+
+/* Active state: highlighted */
+.stat-btn.stat-open.active {
+    background-color: rgba(207, 102, 121, 0.2);
+    border-color: #cf6679;
+    box-shadow: 0 0 0 2px rgba(207, 102, 121, 0.3);
+}
+
+.stat-btn.stat-closed.active,
+.stat-btn.stat-defer.active {
+    background-color: rgba(35, 231, 9, 0.15);
+    border-color: #23e709;
+    box-shadow: 0 0 0 2px rgba(35, 231, 9, 0.2);
+}
+
+.stat-btn.stat-cancel.active {
+    background-color: rgba(255, 165, 0, 0.15);
+    border-color: #ffa500;
+    box-shadow: 0 0 0 2px rgba(255, 165, 0, 0.2);
+}
+
+.stat-btn.stat-open {
     border-color: #cf6679;
 }
 
-.stat-item.stat-closed,
-.stat-item.stat-defer {
+.stat-btn.stat-closed,
+.stat-btn.stat-defer {
     border-color: #23e709;
+}
+
+.stat-btn.stat-cancel {
+    border-color: #ffa500;
 }
 
 .stat-label {
@@ -183,13 +256,17 @@ header {
     font-weight: 600;
 }
 
-.stat-open .stat-value {
+.stat-btn.stat-open .stat-value {
     color: #cf6679;
 }
 
-.stat-closed .stat-value,
-.stat-defer .stat-value {
+.stat-btn.stat-closed .stat-value,
+.stat-btn.stat-defer .stat-value {
     color: #23e709;
+}
+
+.stat-btn.stat-cancel .stat-value {
+    color: #ffa500;
 }
 
 /* Consolidated Header Widgets */
