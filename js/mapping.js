@@ -92,7 +92,7 @@ const MappingApp = {
                 } else if (type === 'tc') {
                     // Task Card Mapping: Col 1 (index 0) = TC, Col 2 (index 1) = Dept
                     let count = 0;
-                    const validDepts = ["Cabin", "Ortak Cabin", "TEKSTIL", "AVI", "MEC", "STR", "OTHER"];
+                    const validDepts = ["Cabin", "Ortak Cabin", "TEKSTIL", "AVI", "MEC", "STR", "SEAT", "KAPLAMA"];
 
                     for (let i = 1; i < json.length; i++) {
                         const row = json[i];
@@ -298,7 +298,7 @@ const MappingApp = {
     },
 
     render: function () {
-        const departments = ["Cabin", "Ortak Cabin", "TEKSTIL", "AVI", "MEC", "STR", "OTHER"];
+        const departments = ["Cabin", "Ortak Cabin", "TEKSTIL", "AVI", "MEC", "STR", "SEAT", "KAPLAMA"];
 
         // Populate Bulk Delete Dropdown
         const bulkSelect = document.getElementById('bulk-aircraft-delete');
