@@ -77,6 +77,8 @@ const App = {
             } else {
                 delBtn.classList.add('hidden');
             }
+            // Refresh extra filters to show only values for the selected aircraft
+            this.populateExtraFilters();
         });
 
         // Delete aircraft data button
@@ -595,6 +597,12 @@ const App = {
     },
 
     populateExtraFilters: function () {
+        // Use only rows that match the currently selected aircraft (if any)
+        const selectedAircraft = this.state.filters.aircraft;
+        const sourceData = selectedAircraft
+            ? this.state.allData.filter(row => row[0] === selectedAircraft)
+            : this.state.allData;
+
         const filters = [
             { id: 'status-filter', index: 9, label: 'Status' },
             { id: 'tc-filter', index: 7, label: 'Schedule' },
@@ -616,7 +624,7 @@ const App = {
                 idx = statusHeaderIndex !== -1 ? statusHeaderIndex : 9;
             }
 
-            const unique = [...new Set(this.state.allData.map(row => String(row[idx] || '').trim()))].filter(v => v).sort();
+            const unique = [...new Set(sourceData.map(row => String(row[idx] || '').trim()))].filter(v => v).sort();
             select.innerHTML = `<option value="">${f.label} Tümü</option>`;
             unique.forEach(val => {
                 const opt = document.createElement('option');
