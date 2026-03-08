@@ -26,6 +26,7 @@
                 <h1 class="header-title">NRC Dashboard</h1>
                 <div class="search-bar">
                     <input type="text" id="search" placeholder="Ara (WO, Task Card, Status...)">
+                    <button id="search-clear-btn" class="search-clear-btn" title="Aramayı Temizle">×</button>
                 </div>
                 <div class="header-top-right">
                     <div id="last-import-time" class="timestamp">-</div>
@@ -57,18 +58,24 @@
 
                 <!-- 2. Stats Bar -->
                 <div id="stats-bar" class="stats-bar hidden">
-                    <div class="stat-item stat-open">
+                    <button class="stat-btn stat-open" data-status="OPEN" id="stat-btn-open" title="OPEN filtrele">
                         <span class="stat-label">OPEN</span>
                         <span id="stat-open" class="stat-value">0</span>
-                    </div>
-                    <div class="stat-item stat-closed">
+                    </button>
+                    <button class="stat-btn stat-closed" data-status="CLOSED" id="stat-btn-closed"
+                        title="CLOSED filtrele">
                         <span class="stat-label">CLOSED</span>
                         <span id="stat-closed" class="stat-value">0</span>
-                    </div>
-                    <div class="stat-item stat-defer">
+                    </button>
+                    <button class="stat-btn stat-defer" data-status="DEFER" id="stat-btn-defer" title="DEFER filtrele">
                         <span class="stat-label">DEFER</span>
                         <span id="stat-defer" class="stat-value">0</span>
-                    </div>
+                    </button>
+                    <button class="stat-btn stat-cancel" data-status="CANCEL" id="stat-btn-cancel"
+                        title="CANCEL filtrele">
+                        <span class="stat-label">CANCEL</span>
+                        <span id="stat-cancel" class="stat-value">0</span>
+                    </button>
                 </div>
 
                 <!-- 3. Department Filters -->
@@ -105,9 +112,7 @@
                 <select id="wo-filter" class="filter-select">
                     <option value="">WO Tümü</option>
                 </select>
-                <select id="status-filter" class="filter-select">
-                    <option value="">Status Tümü</option>
-                </select>
+
                 <select id="chapter-filter" class="filter-select">
                     <option value="">Chapter Tümü</option>
                 </select>
