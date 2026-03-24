@@ -334,6 +334,10 @@ const App = {
         let currentIndex = 1;
         const CHUNK_SIZE = 500;
 
+        // Track which aircraft (by name) and which WOs appear in this import,
+        // so we can assign them individual timestamps in finalizeProcess.
+        const importedAircraftByWO = new Map(); // wo -> aircraftName
+
         const processChunk = () => {
             const chunkEnd = Math.min(currentIndex + CHUNK_SIZE, rows.length);
 
@@ -371,6 +375,11 @@ const App = {
                 const aircraftName = this.state.aircraftMapping[wo] || "";
                 const department = this.state.taskCardMapping[tc] || "";
 
+                // Record this WO -> aircraft mapping for per-aircraft timestamp assignment
+                if (wo) {
+                    importedAircraftByWO.set(String(wo), aircraftName);
+                }
+
                 const finalRow = [aircraftName, department, ...mappedRow];
 
                 // Merge Logic
@@ -399,14 +408,14 @@ const App = {
             if (currentIndex < rows.length) {
                 requestAnimationFrame(processChunk);
             } else {
-                this.finalizeProcess(existingMap, headers);
+                this.finalizeProcess(existingMap, headers, importedAircraftByWO);
             }
         };
 
         processChunk();
     },
 
-    finalizeProcess: async function (dataMap, headers) {
+    finalizeProcess: async function (dataMap, headers, importedAircraftByWO) {
         const finalData = Array.from(dataMap.values());
 
         this.state.headers = headers;
@@ -414,11 +423,30 @@ const App = {
         this.state.filteredData = finalData;
         this.state.lastImportTime = new Date().toISOString();
 
-        // Determine which aircraft were updated in this import
-        const updatedAircraft = new Set(finalData.map(row => row[0]).filter(v => v));
-        updatedAircraft.forEach(aircraft => {
-            this.state.aircraftImportTimes[aircraft] = this.state.lastImportTime;
-        });
+        // Assign individual import timestamps per aircraft.
+        // Each WO in the import may belong to a different aircraft;
+        // we record a separate timestamp per aircraft so that aircraft
+        // from different Work Orders (imported at different times) each
+        // show their own last-import date instead of all sharing one time.
+        if (importedAircraftByWO && importedAircraftByWO.size > 0) {
+            // Group WOs by aircraft name, then give every distinct aircraft
+            // its own timestamp (time of THIS import rounded to the millisecond,
+            // so aircraft in the same file still get identical times — that is
+            // correct; what differs is when two *separate* files are imported).
+            importedAircraftByWO.forEach((aircraftName) => {
+                if (aircraftName) {
+                    // Only update if not already set (first import) or always update
+                    // (refresh on every re-import of that aircraft's WO data)
+                    this.state.aircraftImportTimes[aircraftName] = this.state.lastImportTime;
+                }
+            });
+        } else {
+            // Fallback: update all aircraft found in the final data
+            const updatedAircraft = new Set(finalData.map(row => row[0]).filter(v => v));
+            updatedAircraft.forEach(aircraft => {
+                this.state.aircraftImportTimes[aircraft] = this.state.lastImportTime;
+            });
+        }
 
         // Save to Firebase
         await this.saveData();
