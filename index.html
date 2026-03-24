@@ -28,17 +28,6 @@
                     <input type="text" id="search" placeholder="Ara (WO, Task Card, Status...)">
                     <button id="search-clear-btn" class="search-clear-btn" title="Aramayı Temizle">×</button>
                 </div>
-                <div class="header-top-right">
-                    <div class="controls">
-                        <label for="fileInput" class="btn btn-primary btn-sm">
-                            <span class="icon">📂</span> Excel Yükle
-                        </label>
-                        <input type="file" id="fileInput" accept=".xlsx,.xls" hidden>
-                        <a href="mapping.html" class="btn btn-secondary btn-sm">
-                            <span class="icon">✈️</span> Eşleştirme
-                        </a>
-                    </div>
-                </div>
             </div>
 
             <div class="header-row">
@@ -119,6 +108,15 @@
                 <button id="clear-all-data-btn" class="btn-clear-all" title="Tüm verileri sil">
                     🗑️
                 </button>
+                <div class="controls-end">
+                    <label for="fileInput" class="btn btn-primary btn-sm">
+                        <span class="icon">📂</span> Excel Yükle
+                    </label>
+                    <input type="file" id="fileInput" accept=".xlsx,.xls" hidden>
+                    <a href="mapping.html" class="btn btn-secondary btn-sm">
+                        <span class="icon">✈️</span> Eşleştirme
+                    </a>
+                </div>
             </div>
 
             <div id="progress-container" class="progress-container hidden">
