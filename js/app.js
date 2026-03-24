@@ -83,12 +83,15 @@ const App = {
         document.getElementById('aircraft-filter').addEventListener('change', (e) => {
             const val = e.target.value;
             this.filterData('aircraft', val);
-            // Toggle delete button visibility
+            // Toggle delete buttons
             const delBtn = document.getElementById('delete-aircraft-data-btn');
+            const clearAllBtn = document.getElementById('clear-all-data-btn');
             if (val) {
                 delBtn.classList.remove('hidden');
+                clearAllBtn.classList.add('hidden');
             } else {
                 delBtn.classList.add('hidden');
+                clearAllBtn.classList.remove('hidden');
             }
             // Show/hide aircraft import timestamp
             this.updateAircraftTimestamp(val);
@@ -758,6 +761,7 @@ const App = {
         this.state.filters.aircraft = '';
         document.getElementById('aircraft-filter').value = '';
         document.getElementById('delete-aircraft-data-btn').classList.add('hidden');
+        document.getElementById('clear-all-data-btn').classList.remove('hidden');
         this.updateAircraftTimestamp('');
 
         // Refresh UI
