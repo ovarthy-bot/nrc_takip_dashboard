@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Uçak Eşleştirme - NRC Dashboard</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <!-- SheetJS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+
+    <header>
+        <div class="header-content">
+            <h1>Uçak Eşleştirme</h1>
+            <div class="controls">
+                <a href="index.html" class="btn btn-secondary">
+                    <span class="icon">◀</span> Ana Sayfa
+                </a>
+                <button id="saveMapping" class="btn btn-primary">
+                    <span class="icon">💾</span> Kaydet
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main id="app">
+        <div id="loading" class="hidden">Yükleniyor...</div>
+
+        <div id="mapping-container" class="mapping-container">
+            <div class="mapping-info">
+                <p>Eşleştirme verilerini buradan yönetebilirsiniz. Bu veriler ana sayfada otomatik olarak görünecektir.
+                </p>
+            </div>
+
+            <div class="mapping-grid">
+                <!-- Section 1: Aircraft Mapping -->
+                <div class="manual-entry-section">
+                    <div class="section-header">
+                        <h3>1. Uçak Eşleştirme (WO -> Uçak İsmi)</h3>
+                    </div>
+
+                    <div class="bulk-actions-wrapper">
+                        <div class="bulk-actions">
+                            <div class="bulk-header">
+                                <span class="bulk-label">Uçak Bazlı Toplu Sil:</span>
+                                <label for="aircraftExcelInput" class="btn btn-primary btn-sm">
+                                    <span class="icon">📂</span> Excel İçe Aktar
+                                </label>
+                                <input type="file" id="aircraftExcelInput" accept=".xlsx,.xls" hidden>
+                            </div>
+                            <div class="bulk-controls">
+                                <select id="bulk-aircraft-delete" class="filter-select">
+                                    <option value="">Uçak Seçin</option>
+                                </select>
+                                <button id="bulk-delete-btn" class="btn btn-danger btn-sm">Toplu Sil</button>
+                                <button id="delete-all-aircraft-btn" class="btn btn-danger btn-sm">Tüm Verileri
+                                    Sil</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="entry-form">
+                        <input type="text" id="new-wo" placeholder="WO Numarası">
+                        <input type="text" id="new-aircraft" placeholder="Uçak İsmi">
+                        <button id="add-entry-btn" class="btn btn-secondary">Ekle</button>
+                    </div>
+
+                    <div class="table-container">
+                        <div class="table-wrapper">
+                            <table id="mapping-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 30%;">WO</th>
+                                        <th style="width: 55%;">Uçak İsmi</th>
+                                        <th style="width: 15%;">İşlem</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="mapping-tbody">
+                                    <!-- Rows will be injected here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 2: Task Card Mapping -->
+                <div class="manual-entry-section">
+                    <div class="section-header">
+                        <h3>2. Task Card Eşleştirme (TC -> Bölüm)</h3>
+                        <label for="tcExcelInput" class="btn btn-primary btn-sm">
+                            <span class="icon">📂</span> Excel İçe Aktar
+                        </label>
+                        <input type="file" id="tcExcelInput" accept=".xlsx,.xls" hidden>
+                        <button id="delete-all-tc-btn" class="btn btn-danger btn-sm">Tüm Verileri Sil</button>
+                    </div>
+
+                    <div class="entry-form">
+                        <input type="text" id="new-tc" placeholder="Task Card No">
+                        <select id="new-dept" class="filter-select">
+                            <option value="">Bölüm Seçin</option>
+                            <option value="Cabin">Cabin</option>
+                            <option value="Ortak Cabin">Ortak Cabin</option>
+                            <option value="TEKSTIL">TEKSTIL</option>
+                            <option value="AVI">AVI</option>
+                            <option value="MEC">MEC</option>
+                            <option value="STR">STR</option>
+                            <option value="SEAT">SEAT</option>
+                            <option value="KAPLAMA">KAPLAMA</option>
+                        </select>
+                        <button id="add-tc-entry-btn" class="btn btn-secondary">Ekle</button>
+                    </div>
+
+                    <div class="table-container">
+                        <div class="table-wrapper">
+                            <table id="tc-mapping-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 40%;">Task Card</th>
+                                        <th style="width: 45%;">Bölüm</th>
+                                        <th style="width: 15%;">İşlem</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tc-mapping-tbody">
+                                    <!-- Rows will be injected here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Custom JS (ES6 Modules for Firebase) -->
+    <script type="module" src="js/firebase-config.js"></script>
+    <script type="module" src="js/storage.js"></script>
+    <script type="module" src="js/mapping.js"></script>
+</body>
+
+</html>
