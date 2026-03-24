@@ -157,7 +157,9 @@ header {
 
 .btn-sm {
     padding: 4px 10px;
-    font-size: 0.85rem;
+    font-size: 0.8rem; /* Matches filter-select font-size */
+    height: 30px; /* Force consistent height for all row elements */
+    box-sizing: border-box;
 }
 
 /* Header Sections Row */
@@ -331,6 +333,8 @@ header {
     font-size: 0.8rem;
     cursor: pointer;
     flex-shrink: 0;
+    height: 30px; /* Same height as buttons */
+    box-sizing: border-box;
 }
 
 .checkbox-label:hover span {
@@ -371,13 +375,14 @@ header {
     color: var(--error-color);
 }
 
-/* Header top-right controls area */
-.header-top-right {
+/* Header end-controls area (Excel/Mapping moved here) */
+.controls-end {
     display: flex;
-    align-items: center;
     gap: 8px;
     flex-shrink: 0;
+    margin-left: auto; /* Push to the far right of the flexible filter row if space permits */
 }
+
 
 /* Pagination Controls */
 .pagination-controls {
