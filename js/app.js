@@ -385,10 +385,11 @@ const App = {
                 const tc = mappedRow[1]; // Task Card is second in mappedRow
                 const aircraftName = this.state.aircraftMapping[wo] || "";
 
-                // Check column K (Excel index 10) for Kabin sicil
+                // Check column K (Excel index 10) for Kabin sicil — only for NRC rows
                 const kolonK = row[10];
                 const kolonKSayi = parseInt(kolonK, 10);
-                const isKabin = !isNaN(kolonKSayi) && this.KABIN_SICILLER.has(kolonKSayi);
+                const isNRCRow = String(wo).toUpperCase().startsWith("NRC");
+                const isKabin = isNRCRow && !isNaN(kolonKSayi) && this.KABIN_SICILLER.has(kolonKSayi);
                 const department = isKabin ? "Kabin" : (this.state.taskCardMapping[tc] || "");
 
                 // Record this WO -> aircraft mapping for per-aircraft timestamp assignment
@@ -404,7 +405,7 @@ const App = {
 
                 if (existingRow) {
                     // Update existing row BUT preserve Note and Department
-                    // If Kabin sicil detected, always override department
+                    // If NRC row with Kabin sicil detected, always override department
                     const existingNote = existingRow[existingRow.length - 1] || "";
                     const existingDept = isKabin ? "Kabin" : (existingRow[1] || "");
                     finalRow[1] = existingDept;
