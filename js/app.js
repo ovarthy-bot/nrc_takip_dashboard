@@ -385,10 +385,10 @@ const App = {
                 const tc = mappedRow[1]; // Task Card is second in mappedRow
                 const aircraftName = this.state.aircraftMapping[wo] || "";
 
-                // Check column K (Excel index 10) for Kabin sicil — only for NRC rows
+                // Check column K (Excel index 10) for Kabin sicil — only for NRC rows (task_card starts with "NRC")
                 const kolonK = row[10];
                 const kolonKSayi = parseInt(kolonK, 10);
-                const isNRCRow = String(wo).toUpperCase().startsWith("NRC");
+                const isNRCRow = String(tc).toUpperCase().startsWith("NRC");
                 const isKabin = isNRCRow && !isNaN(kolonKSayi) && this.KABIN_SICILLER.has(kolonKSayi);
                 const department = isKabin ? "Kabin" : (this.state.taskCardMapping[tc] || "");
 
