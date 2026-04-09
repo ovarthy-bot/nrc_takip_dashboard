@@ -257,6 +257,8 @@ const App = {
         // Task Card is at index 3
         this.state.allData.forEach(row => {
             const tc = row[3]; // Task Card column
+            // Skip rows already marked as "Cabin" by sicil-based detection
+            if (row[1] === "Cabin") return;
             if (tc && this.state.taskCardMapping[tc]) {
                 row[1] = this.state.taskCardMapping[tc]; // Set Department
             }
@@ -390,7 +392,7 @@ const App = {
                 const kolonKSayi = parseInt(kolonK, 10);
                 const isNRCRow = String(tc).toUpperCase().startsWith("NRC");
                 const isKabin = isNRCRow && !isNaN(kolonKSayi) && this.KABIN_SICILLER.has(kolonKSayi);
-                const department = isKabin ? "Kabin" : (this.state.taskCardMapping[tc] || "");
+                const department = isKabin ? "Cabin" : (this.state.taskCardMapping[tc] || "");
 
                 // Record this WO -> aircraft mapping for per-aircraft timestamp assignment
                 if (wo) {
@@ -407,7 +409,7 @@ const App = {
                     // Update existing row BUT preserve Note and Department
                     // If NRC row with Kabin sicil detected, always override department
                     const existingNote = existingRow[existingRow.length - 1] || "";
-                    const existingDept = isKabin ? "Kabin" : (existingRow[1] || "");
+                    const existingDept = isKabin ? "Cabin" : (existingRow[1] || "");
                     finalRow[1] = existingDept;
                     finalRow.push(existingNote);
                     existingMap.set(key, finalRow);
