@@ -314,6 +314,14 @@ const App = {
         }, 100);
     },
 
+    KABIN_SICILLER: new Set([
+        43429, 50699, 52768, 65949, 76315, 76433, 76437, 77990,
+        82124, 82142, 82147, 82193, 86095, 86100, 86326, 88282,
+        88311, 89179, 92664, 92670, 94882, 95073, 107126, 107795,
+        107802, 114630, 117096, 117622, 117907, 119336, 119350,
+        119449, 119454, 119461, 119888
+    ]),
+
     processDataChunked: async function (rows) {
         const headerRow = rows[0];
         const columns = [0, 1, 5, 6, 12, 7, 8, 15, 16]; // Indices to keep
@@ -376,7 +384,12 @@ const App = {
                 const wo = mappedRow[0]; // WO is first in mappedRow
                 const tc = mappedRow[1]; // Task Card is second in mappedRow
                 const aircraftName = this.state.aircraftMapping[wo] || "";
-                const department = this.state.taskCardMapping[tc] || "";
+
+                // Check column K (Excel index 10) for Kabin sicil
+                const kolonK = row[10];
+                const kolonKSayi = parseInt(kolonK, 10);
+                const isKabin = !isNaN(kolonKSayi) && this.KABIN_SICILLER.has(kolonKSayi);
+                const department = isKabin ? "Kabin" : (this.state.taskCardMapping[tc] || "");
 
                 // Record this WO -> aircraft mapping for per-aircraft timestamp assignment
                 if (wo) {
@@ -391,9 +404,10 @@ const App = {
 
                 if (existingRow) {
                     // Update existing row BUT preserve Note and Department
+                    // If Kabin sicil detected, always override department
                     const existingNote = existingRow[existingRow.length - 1] || "";
-                    const existingDept = existingRow[1] || "";
-                    finalRow[1] = existingDept; // Preserve department
+                    const existingDept = isKabin ? "Kabin" : (existingRow[1] || "");
+                    finalRow[1] = existingDept;
                     finalRow.push(existingNote);
                     existingMap.set(key, finalRow);
                 } else {
