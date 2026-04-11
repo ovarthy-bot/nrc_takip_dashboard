@@ -111,23 +111,8 @@ const UI = {
 
         // Clear Body
         this.elements.tableBody.innerHTML = '';
-
-        // Find status column index
-        const statusColIdx = headers.findIndex(h =>
-            String(h).toUpperCase().includes('STATUS') || String(h).toUpperCase() === 'DURUM'
-        );
-        const statusIdx = statusColIdx !== -1 ? statusColIdx : 8;
-
         data.forEach(row => {
             const tr = document.createElement('tr');
-
-            // Color row based on status
-            const rowStatus = String(row[statusIdx] || '').toUpperCase();
-            if (rowStatus.includes('OPEN')) tr.classList.add('row-status-open');
-            else if (rowStatus.includes('CLOSED')) tr.classList.add('row-status-closed');
-            else if (rowStatus.includes('DEFER')) tr.classList.add('row-status-defer');
-            else if (rowStatus.includes('CANCEL')) tr.classList.add('row-status-cancel');
-
             row.forEach((cell, i) => {
                 const td = document.createElement('td');
 
@@ -187,23 +172,9 @@ const UI = {
 
     renderCards: function (headers, data) {
         this.elements.cardList.innerHTML = '';
-
-        // Find status column index
-        const statusColIdxCard = headers.findIndex(h =>
-            String(h).toUpperCase().includes('STATUS') || String(h).toUpperCase() === 'DURUM'
-        );
-        const statusIdxCard = statusColIdxCard !== -1 ? statusColIdxCard : 8;
-
         data.forEach(row => {
             const card = document.createElement('div');
             card.className = 'card';
-
-            // Color card based on status
-            const cardStatus = String(row[statusIdxCard] || '').toUpperCase();
-            if (cardStatus.includes('OPEN')) card.classList.add('row-status-open');
-            else if (cardStatus.includes('CLOSED')) card.classList.add('row-status-closed');
-            else if (cardStatus.includes('DEFER')) card.classList.add('row-status-defer');
-            else if (cardStatus.includes('CANCEL')) card.classList.add('row-status-cancel');
 
             const cardHeader = document.createElement('div');
             cardHeader.className = 'card-header';
