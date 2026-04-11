@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <title>NRC → ASDP</title>
+</head>
+<body>
+<script>
+  (function () {
+    const p = new URLSearchParams(location.search);
+    const name = p.get('name') || 'NRC Görev';
+    const hours = parseFloat(p.get('hours')) || 0;
+
+    let tasks = [];
+    try { tasks = JSON.parse(localStorage.getItem('asdp_tasks')) || []; } catch (e) {}
+
+    tasks.push({ name: name, hours: hours });
+    localStorage.setItem('asdp_tasks', JSON.stringify(tasks));
+
+    // Aynı sayfadan (index.html) yönlendir
+    location.replace('./');
+  })();
+</script>
+</body>
+</html>
