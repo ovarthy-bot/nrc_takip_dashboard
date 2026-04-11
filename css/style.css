@@ -595,6 +595,22 @@ th select {
     color: var(--primary-color);
 }
 
+.status-open {
+    color: #cf6679;
+    font-weight: 600;
+}
+
+.status-closed,
+.status-defer {
+    color: #23e709;
+    font-weight: 600;
+}
+
+.status-cancel {
+    color: #ffa500;
+    font-weight: 600;
+}
+
 .card-row {
     display: flex;
     justify-content: space-between;
