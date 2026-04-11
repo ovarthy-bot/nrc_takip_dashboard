@@ -107,6 +107,14 @@ const UI = {
 
             trHead.appendChild(th);
         });
+
+        // ASDP button column header
+        const thAsdp = document.createElement('th');
+        thAsdp.textContent = 'ASDP';
+        thAsdp.classList.add('tight-cell');
+        thAsdp.style.cssText = 'cursor:default';
+        trHead.appendChild(thAsdp);
+
         this.elements.tableHead.appendChild(trHead);
 
         // Clear Body
@@ -170,6 +178,27 @@ const UI = {
 
                 tr.appendChild(td);
             });
+            // ASDP button cell
+            const tdAsdp = document.createElement('td');
+            tdAsdp.classList.add('tight-cell');
+            const asdpBtn = document.createElement('button');
+            asdpBtn.className = 'btn-add-to-asdp';
+            asdpBtn.title = 'İşler bölümüne ekle (ASDP)';
+            asdpBtn.textContent = '+';
+            asdpBtn.onclick = (e) => {
+                e.stopPropagation();
+                const estIdx = headers.indexOf('estimated_mh');
+                const actIdx = headers.indexOf('actual_mh');
+                const estimated = parseFloat(estIdx !== -1 ? row[estIdx] : 0) || 0;
+                const actual = parseFloat(actIdx !== -1 ? row[actIdx] : 0) || 0;
+                const remaining = Math.max(0, estimated - actual);
+                const taskName = row[3] || row[2] || 'NRC Görev';
+                const url = `https://ovarthy-bot.github.io/asdp/add.html?name=${encodeURIComponent(taskName)}&hours=${remaining}`;
+                window.open(url, '_blank');
+            };
+            tdAsdp.appendChild(asdpBtn);
+            tr.appendChild(tdAsdp);
+
             this.elements.tableBody.appendChild(tr);
         });
     },
