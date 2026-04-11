@@ -1098,24 +1098,3 @@ button:disabled {
     opacity: 0.5;
     cursor: not-allowed;
 }
-
-/* Row / Card status coloring — matches dashboard stat-btn colors */
-tr.row-status-open > td:first-child { border-left: 3px solid #cf6679; }
-tr.row-status-closed > td:first-child { border-left: 3px solid #23e709; }
-tr.row-status-defer > td:first-child { border-left: 3px solid #23e709; }
-tr.row-status-cancel > td:first-child { border-left: 3px solid #ffa500; }
-
-tr.row-status-open { background-color: rgba(207, 102, 121, 0.07); }
-tr.row-status-closed { background-color: rgba(35, 231, 9, 0.05); }
-tr.row-status-defer { background-color: rgba(35, 231, 9, 0.05); }
-tr.row-status-cancel { background-color: rgba(255, 165, 0, 0.07); }
-
-tr.row-status-open:hover { background-color: rgba(207, 102, 121, 0.15); }
-tr.row-status-closed:hover { background-color: rgba(35, 231, 9, 0.12); }
-tr.row-status-defer:hover { background-color: rgba(35, 231, 9, 0.12); }
-tr.row-status-cancel:hover { background-color: rgba(255, 165, 0, 0.14); }
-
-.card.row-status-open { border-left: 3px solid #cf6679; background-color: rgba(207, 102, 121, 0.07); }
-.card.row-status-closed { border-left: 3px solid #23e709; background-color: rgba(35, 231, 9, 0.05); }
-.card.row-status-defer { border-left: 3px solid #23e709; background-color: rgba(35, 231, 9, 0.05); }
-.card.row-status-cancel { border-left: 3px solid #ffa500; background-color: rgba(255, 165, 0, 0.07); }
