@@ -195,7 +195,24 @@ const UI = {
             status.className = 'card-status' + (cardStatusClass ? ' ' + cardStatusClass : '');
             status.textContent = statusVal || ''; // Status
 
+            const addBtn = document.createElement('button');
+            addBtn.className = 'btn-add-to-asdp';
+            addBtn.title = 'İşler bölümüne ekle (ASDP)';
+            addBtn.textContent = '+';
+            addBtn.onclick = (e) => {
+                e.stopPropagation();
+                const estIdx = headers.indexOf('estimated_mh');
+                const actIdx = headers.indexOf('actual_mh');
+                const estimated = parseFloat(estIdx !== -1 ? row[estIdx] : 0) || 0;
+                const actual = parseFloat(actIdx !== -1 ? row[actIdx] : 0) || 0;
+                const remaining = Math.max(0, estimated - actual);
+                const taskName = row[3] || row[2] || 'NRC Görev';
+                const url = `https://ovarthy-bot.github.io/asdp/add.html?name=${encodeURIComponent(taskName)}&hours=${remaining}`;
+                window.open(url, '_blank');
+            };
+
             cardHeader.appendChild(title);
+            cardHeader.appendChild(addBtn);
             cardHeader.appendChild(status);
             card.appendChild(cardHeader);
 
