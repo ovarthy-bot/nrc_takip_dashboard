@@ -1069,7 +1069,7 @@ th select {
     overflow: hidden;
 }
 
-.table-wrapper {
+.mapping-container .table-wrapper {
     max-height: 350px;
     overflow-y: auto;
     border: 1px solid var(--border-color);
