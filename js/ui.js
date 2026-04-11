@@ -84,6 +84,15 @@ const UI = {
         this.elements.nextPageBtn.disabled = currentPage === totalPages;
     },
 
+    // Display labels for specific column names
+    HEADER_LABELS: {
+        'estimated_mh': 'EST-MH',
+        'actual_mh': 'ACT-MH',
+    },
+
+    // Column names that should always render as tight (no-wrap, min-width)
+    TIGHT_HEADER_NAMES: new Set(['estimated_mh', 'actual_mh', 'completed_on', 'status', 'Oran %', 'Uçak İsmi']),
+
     renderTable: function (headers, data) {
         // Clear Headers
         this.elements.tableHead.innerHTML = '';
@@ -91,7 +100,8 @@ const UI = {
 
         headers.forEach((h, index) => {
             const th = document.createElement('th');
-            th.textContent = h;
+            const label = this.HEADER_LABELS[h] || h;
+            th.textContent = label;
             th.onclick = () => window.App.sortData(index);
 
             // Add sorting indicator if active
@@ -99,9 +109,8 @@ const UI = {
                 th.textContent += window.App.state.sort.asc ? ' ▲' : ' ▼';
             }
 
-            // Specific columns tight (adjusted for new columns)
-            // Aircraft Name (0), WO (2), Task Card (3), etc. (1 removed to allow widen)
-            if ([0, 2, 3, 5, 8, 9, 10].includes(index)) {
+            // Tight cell: fixed indices + name-based
+            if ([0, 2, 3, 5, 8, 9, 10].includes(index) || this.TIGHT_HEADER_NAMES.has(h)) {
                 th.classList.add('tight-cell');
             }
 
@@ -163,18 +172,24 @@ const UI = {
                     noteWrapper.appendChild(deleteBtn);
                     td.appendChild(noteWrapper);
                 } else {
-                    td.textContent = cell;
+                    // Format numeric MH values to 2 decimal places
+                    if ((headers[i] === 'estimated_mh' || headers[i] === 'actual_mh') && cell !== '' && cell !== null) {
+                        const num = parseFloat(cell);
+                        td.textContent = isNaN(num) ? cell : num.toFixed(2);
+                    } else {
+                        td.textContent = cell;
+                    }
                     if (headers[i] === 'status') {
                         const statusClass = { OPEN: 'status-open', CLOSED: 'status-closed', DEFER: 'status-defer', CANCEL: 'status-cancel' }[String(cell).trim().toUpperCase()];
                         if (statusClass) td.classList.add(statusClass);
                     }
                 }
 
-                // Wrap text columns
-                if (i === 4 || i === 6) td.classList.add('wrap-text');
+                // Wrap text columns (skip if the column is already tight by name)
+                if ((i === 4 || i === 6) && !this.TIGHT_HEADER_NAMES.has(headers[i])) td.classList.add('wrap-text');
 
-                // Tight cell columns
-                if ([0, 2, 3, 5, 8, 9, 10].includes(i)) td.classList.add('tight-cell');
+                // Tight cell: fixed indices + name-based
+                if ([0, 2, 3, 5, 8, 9, 10].includes(i) || this.TIGHT_HEADER_NAMES.has(headers[i])) td.classList.add('tight-cell');
 
                 tr.appendChild(td);
             });
