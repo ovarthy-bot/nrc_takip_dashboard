@@ -1,285 +1,1116 @@
-// UI Module - Handles all DOM manipulation and rendering
-const UI = {
-    elements: {
-        tableHead: document.querySelector('#main-table thead'),
-        tableBody: document.querySelector('#main-table tbody'),
-        cardList: document.getElementById('card-list'),
-        loading: document.getElementById('loading'),
-        emptyState: document.getElementById('empty-state'),
-        dataContainer: document.getElementById('data-container'),
-        progressContainer: document.getElementById('progress-container'),
-        progressFill: document.getElementById('progress-fill'),
-        progressText: document.getElementById('progress-text'),
-        statsBar: document.getElementById('stats-bar'),
-        filtersSection: document.getElementById('filters-section'),
-        paginationControls: document.getElementById('pagination-controls'),
-        pageInfo: document.getElementById('page-info'),
-        prevPageBtn: document.getElementById('prev-page'),
-        nextPageBtn: document.getElementById('next-page')
-    },
+:root {
+    --bg-color: #121212;
+    --surface-color: #1e1e1e;
+    --primary-color: #bb86fc;
+    --secondary-color: #03dac6;
+    --error-color: #cf6679;
+    --text-primary: #e0e0e0;
+    --text-secondary: #a0a0a0;
+    --border-color: #333;
+    --hover-bg: #2c2c2c;
+    --input-bg: #2c2c2c;
+    --header-bg: #1f1f1f;
 
-    toggleProgress: function (show) {
-        if (show) {
-            this.elements.progressContainer.classList.remove('hidden');
-        } else {
-            this.elements.progressContainer.classList.add('hidden');
-        }
-    },
+    --spacing-sm: 8px;
+    --spacing-md: 16px;
+    --spacing-lg: 24px;
+    --border-radius: 8px;
+    --shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
 
-    updateProgress: function (percent, text) {
-        this.elements.progressFill.style.width = `${percent}%`;
-        if (text) this.elements.progressText.textContent = text;
-    },
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-primary);
+    margin: 0;
+    padding: 0;
+    line-height: 1.5;
+}
 
-    toggleLoading: function (show) {
-        if (show) {
-            this.elements.loading.classList.remove('hidden');
-            this.elements.dataContainer.classList.add('hidden');
-            this.elements.emptyState.classList.add('hidden');
-        } else {
-            this.elements.loading.classList.add('hidden');
-        }
-    },
+/* Header & Controls */
+header {
+    background-color: transparent;
+    /* Remove background from full-width header */
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    padding: var(--spacing-md) 0 0 0;
+    /* Only top padding to separate from screen edge */
+}
 
-    showData: function (headers, data, stats, lastImportTime, pagination) {
-        if (!data || data.length === 0) {
-            this.elements.dataContainer.classList.add('hidden');
-            this.elements.emptyState.classList.remove('hidden');
-            this.elements.statsBar.classList.add('hidden');
-            this.elements.filtersSection.classList.add('hidden');
-            return;
-        }
+.header-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: var(--spacing-md);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background-color: var(--surface-color);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    box-sizing: border-box;
+}
 
-        this.elements.emptyState.classList.add('hidden');
-        this.elements.dataContainer.classList.remove('hidden');
-        this.elements.statsBar.classList.remove('hidden');
-        this.elements.filtersSection.classList.remove('hidden');
+.filter-group {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
 
-        // Update stats
-        this.updateStats(stats, lastImportTime);
+.header-main {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+}
 
-        // Update pagination info
-        this.updatePagination(pagination);
+.header-title {
+    margin: 0;
+    font-size: 1.2rem;
+    color: var(--text-primary);
+    white-space: nowrap;
+}
 
-        // Render table and cards
-        this.renderTable(headers, data);
-        this.renderCards(headers, data);
-    },
+.search-bar {
+    flex-grow: 1;
+    max-width: 500px;
+    position: relative;
+    display: flex;
+    align-items: center;
+}
 
-    updateStats: function (stats, lastImportTime) {
-        document.getElementById('stat-open').textContent = stats.open;
-        document.getElementById('stat-closed').textContent = stats.closed;
-        document.getElementById('stat-defer').textContent = stats.defer;
-        const cancelEl = document.getElementById('stat-cancel');
-        if (cancelEl) cancelEl.textContent = stats.cancel || 0;
-    },
+.search-bar input {
+    width: 100%;
+    padding: 6px 32px 6px 12px;
+    /* right padding for clear button */
+    background-color: var(--input-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    border-radius: 4px;
+    font-size: 0.9rem;
+    box-sizing: border-box;
+}
 
-    updatePagination: function (pagination) {
-        const { currentPage, totalPages } = pagination;
+/* Search clear (×) button */
+.search-clear-btn {
+    position: absolute;
+    right: 6px;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.1rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 50%;
+    display: none;
+    /* hidden by default */
+    transition: color 0.2s;
+}
 
-        this.elements.pageInfo.textContent = `Sayfa ${currentPage} / ${totalPages}`;
+.search-clear-btn.visible {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
 
-        // Disable/enable buttons
-        this.elements.prevPageBtn.disabled = currentPage === 1;
-        this.elements.nextPageBtn.disabled = currentPage === totalPages;
-    },
+.search-clear-btn:hover {
+    color: var(--text-primary);
+}
 
-    renderTable: function (headers, data) {
-        // Clear Headers
-        this.elements.tableHead.innerHTML = '';
-        const trHead = document.createElement('tr');
+.controls {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+}
 
-        headers.forEach((h, index) => {
-            const th = document.createElement('th');
-            th.textContent = h;
-            th.onclick = () => window.App.sortData(index);
+.btn {
+    padding: 8px 16px;
+    border-radius: var(--border-radius);
+    border: none;
+    cursor: pointer;
+    font-weight: 500;
+    transition: opacity 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
 
-            // Add sorting indicator if active
-            if (window.App.state.sort.colIndex === index) {
-                th.textContent += window.App.state.sort.asc ? ' ▲' : ' ▼';
-            }
+.btn:hover {
+    opacity: 0.9;
+}
 
-            // Specific columns tight (adjusted for new columns)
-            // Aircraft Name (0), WO (2), Task Card (3), etc. (1 removed to allow widen)
-            if ([0, 2, 3, 5, 8, 9, 10].includes(index)) {
-                th.classList.add('tight-cell');
-            }
+.btn-primary {
+    background-color: var(--primary-color);
+    color: #000;
+}
 
-            trHead.appendChild(th);
-        });
-        this.elements.tableHead.appendChild(trHead);
+.btn-danger {
+    background-color: var(--error-color);
+    color: #000;
+}
 
-        // Clear Body
-        this.elements.tableBody.innerHTML = '';
-        data.forEach(row => {
-            const tr = document.createElement('tr');
-            row.forEach((cell, i) => {
-                const td = document.createElement('td');
+.btn-secondary {
+    background-color: var(--secondary-color);
+    color: #000;
+}
 
-                // Department dropdown (index 1)
-                if (i === 1) {
-                    const select = document.createElement('select');
-                    select.className = 'dept-select';
-                    const departments = ['', 'Cabin', 'Ortak Cabin', 'TEKSTIL', 'AVI', 'MEC', 'STR', 'SEAT', 'KAPLAMA'];
-                    departments.forEach(dept => {
-                        const opt = document.createElement('option');
-                        opt.value = dept;
-                        opt.textContent = dept || '-';
-                        if (dept === cell) opt.selected = true;
-                        select.appendChild(opt);
-                    });
-                    select.onchange = (e) => window.App.updateDepartment(row, e.target.value);
-                    td.appendChild(select);
-                } else if (headers[i] === 'Not') {
-                    const noteWrapper = document.createElement('div');
-                    noteWrapper.className = 'note-cell-wrapper';
+.btn-sm {
+    padding: 4px 10px;
+    font-size: 0.8rem; /* Matches filter-select font-size */
+    height: 30px; /* Force consistent height for all row elements */
+    box-sizing: border-box;
+}
 
-                    const textarea = document.createElement('textarea');
-                    textarea.className = 'table-note-textarea';
-                    textarea.value = cell || '';
-                    textarea.placeholder = 'Not...';
-                    textarea.onchange = (e) => window.App.updateNote(row, e.target.value);
+/* Header Sections Row */
+.header-row {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    overflow-x: auto;
+    padding-bottom: 6px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-color) transparent;
+}
 
-                    const deleteBtn = document.createElement('button');
-                    deleteBtn.className = 'btn-delete-note';
-                    deleteBtn.innerHTML = '🗑️';
-                    deleteBtn.title = 'Notu Sil';
-                    deleteBtn.onclick = () => {
-                        if (confirm('Notu silmek istediğinize emin misiniz?')) {
-                            textarea.value = '';
-                            window.App.updateNote(row, '');
-                        }
-                    };
+.header-row::-webkit-scrollbar {
+    height: 5px;
+}
 
-                    noteWrapper.appendChild(textarea);
-                    noteWrapper.appendChild(deleteBtn);
-                    td.appendChild(noteWrapper);
-                } else {
-                    td.textContent = cell;
-                    if (i === 8) {
-                        const statusClass = { OPEN: 'status-open', CLOSED: 'status-closed', DEFER: 'status-defer', CANCEL: 'status-cancel' }[String(cell).trim().toUpperCase()];
-                        if (statusClass) td.classList.add(statusClass);
-                    }
-                }
+.header-row::-webkit-scrollbar-track {
+    background: transparent;
+}
 
-                // Wrap text columns
-                if (i === 4 || i === 6) td.classList.add('wrap-text');
+.header-row::-webkit-scrollbar-thumb {
+    background-color: var(--border-color);
+    border-radius: 10px;
+}
 
-                // Tight cell columns
-                if ([0, 2, 3, 5, 8, 9, 10].includes(i)) td.classList.add('tight-cell');
+/* Stats Bar */
+.stats-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
 
-                tr.appendChild(td);
-            });
-            this.elements.tableBody.appendChild(tr);
-        });
-    },
+/* stat-btn: clickable version of stat-item */
+.stat-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    background-color: var(--header-bg);
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+    white-space: nowrap;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    font-family: inherit;
+}
 
-    renderCards: function (headers, data) {
-        this.elements.cardList.innerHTML = '';
-        data.forEach(row => {
-            const card = document.createElement('div');
-            card.className = 'card';
+.stat-btn:hover {
+    filter: brightness(1.15);
+    border-color: currentColor;
+}
 
-            const cardHeader = document.createElement('div');
-            cardHeader.className = 'card-header';
+/* Active state: highlighted */
+.stat-btn.stat-open.active {
+    background-color: rgba(207, 102, 121, 0.2);
+    border-color: #cf6679;
+    box-shadow: 0 0 0 2px rgba(207, 102, 121, 0.3);
+}
 
-            // Use Task Card as Title
-            const title = document.createElement('div');
-            title.className = 'card-title';
-            title.textContent = row[3] || row[2]; // Task Card or WO
+.stat-btn.stat-closed.active,
+.stat-btn.stat-defer.active {
+    background-color: rgba(35, 231, 9, 0.15);
+    border-color: #23e709;
+    box-shadow: 0 0 0 2px rgba(35, 231, 9, 0.2);
+}
 
-            const status = document.createElement('div');
-            const cardStatusClass = { OPEN: 'status-open', CLOSED: 'status-closed', DEFER: 'status-defer', CANCEL: 'status-cancel' }[String(row[8] || '').trim().toUpperCase()];
-            status.className = 'card-status' + (cardStatusClass ? ' ' + cardStatusClass : '');
-            status.textContent = row[8] || ''; // Status
+.stat-btn.stat-cancel.active {
+    background-color: rgba(255, 165, 0, 0.15);
+    border-color: #ffa500;
+    box-shadow: 0 0 0 2px rgba(255, 165, 0, 0.2);
+}
 
-            cardHeader.appendChild(title);
-            cardHeader.appendChild(status);
-            card.appendChild(cardHeader);
+.stat-btn.stat-open {
+    border-color: #cf6679;
+}
 
-            // Create rows for other data
-            headers.forEach((h, i) => {
-                // Skip Task Card (already in header)
-                if (i === 3) return;
+.stat-btn.stat-closed,
+.stat-btn.stat-defer {
+    border-color: #23e709;
+}
 
-                const rowDiv = document.createElement('div');
-                rowDiv.className = 'card-row';
+.stat-btn.stat-cancel {
+    border-color: #ffa500;
+}
 
-                const label = document.createElement('span');
-                label.className = 'card-label';
-                label.textContent = h + ':';
+.stat-label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
 
-                const value = document.createElement('span');
-                value.className = 'card-value';
+.stat-value {
+    font-size: 0.9rem;
+    font-weight: 600;
+}
 
-                // Department dropdown for mobile
-                if (i === 1) {
-                    const select = document.createElement('select');
-                    select.className = 'dept-select-mobile';
-                    const departments = ['', 'Cabin', 'Ortak Cabin', 'TEKSTIL', 'AVI', 'MEC', 'STR', 'SEAT', 'KAPLAMA'];
-                    departments.forEach(dept => {
-                        const opt = document.createElement('option');
-                        opt.value = dept;
-                        opt.textContent = dept || '-';
-                        if (dept === row[i]) opt.selected = true;
-                        select.appendChild(opt);
-                    });
-                    select.onchange = (e) => window.App.updateDepartment(row, e.target.value);
-                    value.appendChild(select);
-                } else {
-                    value.textContent = row[i];
-                    if (i === 8) {
-                        const rowStatusClass = { OPEN: 'status-open', CLOSED: 'status-closed', DEFER: 'status-defer', CANCEL: 'status-cancel' }[String(row[i] || '').trim().toUpperCase()];
-                        if (rowStatusClass) value.classList.add(rowStatusClass);
-                    }
-                }
+.stat-btn.stat-open .stat-value {
+    color: #cf6679;
+}
 
-                rowDiv.appendChild(label);
-                rowDiv.appendChild(value);
-                card.appendChild(rowDiv);
-            });
+.stat-btn.stat-closed .stat-value,
+.stat-btn.stat-defer .stat-value {
+    color: #23e709;
+}
 
-            // Note Section
-            const noteDiv = document.createElement('div');
-            noteDiv.className = 'card-note';
+.stat-btn.stat-cancel .stat-value {
+    color: #ffa500;
+}
 
-            const noteHeader = document.createElement('div');
-            noteHeader.className = 'card-note-header';
+/* Consolidated Header Widgets */
+.header-widgets {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 8px;
+}
 
-            const noteLabel = document.createElement('label');
-            noteLabel.textContent = 'Notlar:';
+.filters-section {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+}
 
-            const deleteNoteBtn = document.createElement('button');
-            deleteNoteBtn.className = 'btn-delete-note-mobile';
-            deleteNoteBtn.innerHTML = '🗑️';
-            deleteNoteBtn.title = 'Notu Sil';
+.department-checkboxes {
+    display: flex;
+    gap: 6px;
+    flex-wrap: nowrap;
+}
 
-            noteHeader.appendChild(noteLabel);
-            noteHeader.appendChild(deleteNoteBtn);
+.checkbox-label {
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+    position: relative;
+    flex-shrink: 0;
+}
 
-            const noteInput = document.createElement('textarea');
-            noteInput.placeholder = 'Not ekle...';
+.dept-checkbox {
+    position: absolute;
+    opacity: 0;
+}
 
-            const noteIndex = headers.indexOf('Not');
-            if (noteIndex !== -1) {
-                noteInput.value = row[noteIndex] || '';
-                noteInput.onchange = (e) => window.App.updateNote(row, e.target.value);
+.checkbox-label span {
+    padding: 4px 10px;
+    background-color: var(--header-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
 
-                deleteNoteBtn.onclick = () => {
-                    if (confirm('Notu silmek istediğinize emin misiniz?')) {
-                        noteInput.value = '';
-                        window.App.updateNote(row, '');
-                    }
-                };
-            }
+.dept-checkbox:checked+span {
+    background-color: var(--primary-color);
+    color: #000;
+    border-color: var(--primary-color);
+}
 
-            noteDiv.appendChild(noteHeader);
-            noteDiv.appendChild(noteInput);
-            card.appendChild(noteDiv);
+.filter-select {
+    background-color: var(--header-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    flex-shrink: 0;
+    height: 30px; /* Same height as buttons */
+    box-sizing: border-box;
+}
 
-            this.elements.cardList.appendChild(card);
-        });
+.checkbox-label:hover span {
+    border-color: var(--primary-color);
+}
+
+/* Per-aircraft import timestamp (shown next to aircraft filter) */
+.aircraft-timestamp {
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    opacity: 0.85;
+    white-space: nowrap;
+    background-color: var(--header-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 3px 8px;
+    flex-shrink: 0;
+}
+
+/* Small icon-only "clear all" button – unobtrusive, tucked in filter group */
+.btn-clear-all {
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text-secondary);
+    font-size: 1rem;
+    cursor: pointer;
+    padding: 3px 6px;
+    border-radius: 4px;
+    line-height: 1;
+    opacity: 0.5;
+    transition: opacity 0.2s, border-color 0.2s, color 0.2s;
+    flex-shrink: 0;
+}
+
+.btn-clear-all:hover {
+    opacity: 1;
+    border-color: var(--error-color);
+    color: var(--error-color);
+}
+
+/* Header end-controls area (Excel/Mapping moved here) */
+.controls-end {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+    margin-left: auto; /* Push to the far right of the flexible filter row if space permits */
+}
+
+
+/* Pagination Controls */
+.pagination-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md) 0;
+    flex-wrap: wrap;
+    background-color: var(--surface-color);
+    border-top: 1px solid var(--border-color);
+}
+
+.page-info {
+    color: var(--text-primary);
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+.items-per-page {
+    background-color: var(--input-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 6px 10px;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+
+/* Mobile Pagination Refinement */
+@media (max-width: 768px) {
+    .pagination-controls {
+        justify-content: space-between;
+        padding: 6px 12px;
+        gap: 6px;
     }
-};
 
-export default UI;
+    .pagination-controls .btn {
+        flex: 1;
+        justify-content: center;
+        max-width: 100px;
+        font-size: 0.8rem;
+        padding: 6px 8px;
+    }
+
+    .page-info {
+        order: -1;
+        width: 100%;
+        margin-bottom: 4px;
+        font-size: 0.85rem;
+    }
+}
+
+
+
+
+/* Layout */
+body {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    /* No body scroll */
+}
+
+main {
+    flex: 1;
+    /* Allow to fill remaining height */
+    display: flex;
+    flex-direction: column;
+    padding: var(--spacing-md);
+    max-width: 1400px;
+    width: 100%;
+    margin: 0 auto;
+    overflow: hidden;
+    min-height: 0;
+    /* Critical for flex children to shrink/scroll correctly */
+    box-sizing: border-box;
+}
+
+.data-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    gap: var(--spacing-md);
+    min-height: 0;
+}
+
+.table-wrapper,
+.card-list {
+    flex-grow: 1;
+    overflow-y: auto;
+    background-color: var(--surface-color);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+}
+
+.hidden {
+    display: none !important;
+}
+
+.empty-state {
+    text-align: center;
+    color: var(--text-secondary);
+    padding: 40px;
+    flex-grow: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Table View (Desktop) */
+.table-wrapper {
+    overflow-x: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 1000px;
+}
+
+th,
+td {
+    padding: 12px 16px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+}
+
+th {
+    background-color: var(--header-bg);
+    color: var(--text-secondary);
+    font-weight: 600;
+    cursor: pointer;
+    user-select: none;
+    position: sticky;
+    top: 0;
+    white-space: nowrap;
+}
+
+th:hover {
+    background-color: var(--hover-bg);
+}
+
+tr:hover {
+    background-color: var(--hover-bg);
+}
+
+/* Narrow Columns */
+th.tight-cell,
+td.tight-cell {
+    width: 1%;
+    white-space: nowrap;
+}
+
+/* Wrapping Columns */
+.wrap-text {
+    white-space: normal;
+    min-width: 200px;
+    max-width: 400px;
+}
+
+/* Select in Header */
+th select {
+    background-color: var(--bg-color);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 4px;
+    border-radius: 4px;
+    margin-top: 4px;
+    max-width: 100%;
+}
+
+/* Card View (Mobile) */
+.dept-select {
+    min-width: 120px;
+    background-color: var(--input-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    border-radius: 4px;
+    padding: 4px;
+}
+
+.card-list {
+    display: none;
+    /* Hidden by default on desktop */
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.card {
+    background-color: var(--surface-color);
+    border-radius: var(--border-radius);
+    padding: var(--spacing-md);
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border-color);
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: var(--spacing-sm);
+    padding-bottom: var(--spacing-sm);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.card-title {
+    font-weight: bold;
+    color: var(--primary-color);
+}
+
+.status-open {
+    color: #cf6679;
+    font-weight: 600;
+}
+
+.status-closed,
+.status-defer {
+    color: #23e709;
+    font-weight: 600;
+}
+
+.status-cancel {
+    color: #ffa500;
+    font-weight: 600;
+}
+
+.card-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 6px;
+}
+
+.card-label {
+    color: var(--text-secondary);
+    font-size: 0.9em;
+    flex-shrink: 0;
+    margin-right: 12px;
+}
+
+.card-value {
+    text-align: right;
+    word-break: break-word;
+}
+
+/* Responsive Breakpoint */
+@media (max-width: 768px) {
+    header {
+        padding: 8px 0 0 0;
+    }
+
+    main {
+        padding: 8px 8px 60px 8px;
+        /* Further increased bottom padding for mobile navigation */
+        flex: 1;
+    }
+
+    .header-container {
+        padding: 12px 8px;
+        /* Match main container padding on mobile */
+    }
+
+    .data-container {
+        gap: 8px;
+        /* Reduced gap between data items */
+    }
+
+    .header-main {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+    }
+
+    .search-bar {
+        max-width: 100%;
+        order: 2;
+    }
+
+    .controls {
+        justify-content: space-between;
+        order: 1;
+    }
+
+    .header-title {
+        order: 0;
+        text-align: center;
+    }
+
+    .header-row {
+        justify-content: flex-start;
+        padding: 4px 0;
+    }
+
+    .stats-bar,
+    .filters-section {
+        flex-wrap: nowrap;
+    }
+
+    #main-table {
+        display: none;
+        /* Hide main dashboard table on mobile */
+    }
+
+    .table-wrapper {
+        display: block;
+        max-height: none;
+        overflow-x: auto;
+        /* Ensure horizontal scroll for tables that stay */
+    }
+
+    .card-list {
+        display: flex;
+        gap: 8px;
+        /* Reduced gap between cards */
+    }
+
+    .card {
+        padding: 10px;
+        /* Narrower padding inside cards */
+    }
+
+    /* Mapping Page Mobile Refinements */
+    .mapping-container {
+        padding: 10px;
+        max-height: none;
+        width: 100% !important;
+        box-sizing: border-box;
+        margin: 0 !important;
+        border-radius: 0;
+        overflow-y: visible;
+        /* Allow body scroll for better experience */
+    }
+
+    .mapping-grid {
+        display: flex;
+        /* Stack sections vertically */
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .mapping-info {
+        font-size: 0.85rem;
+        padding: 12px;
+        margin-bottom: 5px;
+    }
+
+    .manual-entry-section {
+        padding: 15px;
+        min-height: auto;
+    }
+
+    .section-header h3 {
+        font-size: 1rem;
+    }
+
+    .entry-form {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+    }
+
+    .entry-form input,
+    .entry-form select,
+    .entry-form button {
+        width: 100% !important;
+        margin: 0 !important;
+        font-size: 0.9rem;
+        height: 40px;
+        padding: 8px 12px;
+    }
+
+    .bulk-actions-wrapper {
+        margin-bottom: 15px;
+    }
+
+    .bulk-actions {
+        flex-direction: column;
+        align-items: stretch !important;
+        padding: 10px !important;
+        gap: 8px !important;
+    }
+
+    .bulk-controls {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .bulk-label {
+        font-size: 0.8rem !important;
+    }
+
+    .bulk-actions select,
+    .bulk-actions button {
+        width: 100% !important;
+        font-size: 0.85rem !important;
+        height: 38px;
+    }
+
+    .mapping-container table {
+        font-size: 0.8rem;
+        table-layout: auto;
+        /* Allow content to dictate width */
+        min-width: 450px;
+    }
+
+    .mapping-container td select.dept-select {
+        width: 120px !important;
+        min-width: 120px !important;
+    }
+
+    .mapping-container th,
+    .mapping-container td {
+        padding: 8px 4px;
+    }
+
+    .mapping-container .table-wrapper {
+        max-height: 400px;
+    }
+
+    .btn-delete {
+        padding: 4px 8px !important;
+        font-size: 0.9rem;
+    }
+}
+
+/* Progress Bar */
+.progress-container {
+    margin-top: var(--spacing-md);
+    background-color: var(--surface-color);
+    padding: var(--spacing-sm);
+    border-radius: var(--border-radius);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.5);
+}
+
+.progress-bar {
+    flex-grow: 1;
+    height: 10px;
+    background-color: var(--bg-color);
+    border-radius: 5px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background-color: var(--secondary-color);
+    width: 0%;
+    transition: width 0.2s ease;
+}
+
+#progress-text {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    min-width: 80px;
+    text-align: right;
+}
+
+/* Card Notes */
+.card-note {
+    margin-top: var(--spacing-md);
+    border-top: 1px solid var(--border-color);
+    padding-top: var(--spacing-sm);
+}
+
+.card-note label {
+    display: block;
+    color: var(--text-secondary);
+    font-size: 0.85em;
+    margin-bottom: 4px;
+}
+
+.card-note textarea {
+    width: 100%;
+    background-color: var(--input-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    border-radius: var(--border-radius);
+    padding: 8px;
+    resize: vertical;
+    min-height: 60px;
+    font-family: inherit;
+    box-sizing: border-box;
+}
+
+.card-note textarea:focus {
+    outline: 2px solid var(--primary-color);
+    border-color: transparent;
+}
+
+/* Desktop Table Note Styles */
+.note-cell-wrapper {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    min-width: 150px;
+}
+
+.table-note-textarea {
+    flex-grow: 1;
+    background-color: var(--input-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 0.85rem;
+    resize: vertical;
+    min-height: 40px;
+    font-family: inherit;
+}
+
+.btn-delete-note {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 1.1rem;
+    padding: 0;
+    opacity: 0.6;
+    transition: opacity 0.2s;
+}
+
+.btn-delete-note:hover {
+    opacity: 1;
+}
+
+/* Mobile Card Note Header */
+.card-note-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.btn-delete-note-mobile {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 1.1rem;
+    padding: 4px;
+    opacity: 0.6;
+}
+
+.btn-delete-note-mobile:hover {
+    opacity: 1;
+}
+
+/* Mapping Page Styles */
+.mapping-container {
+    max-width: 1200px;
+    margin: 20px auto;
+    padding: var(--spacing-md);
+    overflow-y: auto;
+    max-height: calc(100vh - 120px);
+}
+
+.mapping-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    align-items: start;
+}
+
+.mapping-info {
+    grid-column: 1 / -1;
+    background-color: var(--surface-color);
+    padding: var(--spacing-md);
+    border-radius: var(--border-radius);
+    margin-bottom: var(--spacing-md);
+    border-left: 4px solid var(--primary-color);
+}
+
+.mapping-info p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+}
+
+/* Manual Entry Section */
+.manual-entry-section {
+    background-color: var(--surface-color);
+    padding: 20px;
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 500px;
+}
+
+.section-header {
+    margin-bottom: 15px;
+}
+
+.section-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: var(--text-primary);
+}
+
+.bulk-actions-wrapper {
+    margin-bottom: 15px;
+}
+
+.bulk-actions {
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px dashed var(--border-color);
+    border-radius: var(--border-radius);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.bulk-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+}
+
+.bulk-label {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.bulk-controls {
+    display: flex;
+    gap: 10px;
+}
+
+.bulk-controls select {
+    flex: 1;
+}
+
+.entry-form {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.entry-form input,
+.entry-form select {
+    flex: 1;
+    background-color: var(--input-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 8px 12px;
+    border-radius: var(--border-radius);
+    font-size: 0.9rem;
+}
+
+.table-container {
+    flex-grow: 1;
+    overflow: hidden;
+}
+
+.table-wrapper {
+    max-height: 350px;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+}
+
+.mapping-container table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.mapping-container th {
+    position: sticky;
+    top: 0;
+    background-color: var(--bg-color);
+    z-index: 1;
+}
+
+.mapping-container th,
+.mapping-container td {
+    padding: 10px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.aircraft-input,
+.dept-select {
+    width: 100%;
+    background-color: var(--input-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 6px 10px;
+    border-radius: var(--border-radius);
+    font-size: 0.85rem;
+}
+
+.btn-delete {
+    background: transparent;
+    border: 1px solid #cf6679;
+    color: #cf6679;
+    padding: 4px 8px;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.btn-delete:hover {
+    background-color: #cf6679;
+    color: #fff;
+}
+
+/* Department Select Dropdowns */
+.dept-select,
+.dept-select-mobile {
+    cursor: pointer;
+}
+
+.btn-danger {
+    background-color: #cf6679;
+    color: white;
+}
+
+.btn-danger:hover {
+    filter: brightness(1.1);
+}
+
+/* Disabled button state */
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
