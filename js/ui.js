@@ -156,6 +156,10 @@ const UI = {
                     td.appendChild(noteWrapper);
                 } else {
                     td.textContent = cell;
+                    if (headers[i] === 'status') {
+                        const statusClass = { OPEN: 'status-open', CLOSED: 'status-closed', DEFER: 'status-defer', CANCEL: 'status-cancel' }[String(cell).trim().toUpperCase()];
+                        if (statusClass) td.classList.add(statusClass);
+                    }
                 }
 
                 // Wrap text columns
@@ -184,9 +188,12 @@ const UI = {
             title.className = 'card-title';
             title.textContent = row[3] || row[2]; // Task Card or WO
 
+            const statusIdx = headers.indexOf('status');
+            const statusVal = statusIdx !== -1 ? row[statusIdx] : '';
             const status = document.createElement('div');
-            status.className = 'card-status';
-            status.textContent = row[8] || ''; // Status
+            const cardStatusClass = { OPEN: 'status-open', CLOSED: 'status-closed', DEFER: 'status-defer', CANCEL: 'status-cancel' }[String(statusVal || '').trim().toUpperCase()];
+            status.className = 'card-status' + (cardStatusClass ? ' ' + cardStatusClass : '');
+            status.textContent = statusVal || ''; // Status
 
             cardHeader.appendChild(title);
             cardHeader.appendChild(status);
@@ -194,8 +201,8 @@ const UI = {
 
             // Create rows for other data
             headers.forEach((h, i) => {
-                // Skip Task Card (already in header)
-                if (i === 3) return;
+                // Skip Task Card and Status (already in header)
+                if (i === 3 || h === 'status') return;
 
                 const rowDiv = document.createElement('div');
                 rowDiv.className = 'card-row';
@@ -223,6 +230,10 @@ const UI = {
                     value.appendChild(select);
                 } else {
                     value.textContent = row[i];
+                    if (h === 'status') {
+                        const rowStatusClass = { OPEN: 'status-open', CLOSED: 'status-closed', DEFER: 'status-defer', CANCEL: 'status-cancel' }[String(row[i] || '').trim().toUpperCase()];
+                        if (rowStatusClass) value.classList.add(rowStatusClass);
+                    }
                 }
 
                 rowDiv.appendChild(label);
