@@ -584,7 +584,8 @@ th select {
 
 .card-header {
     display: flex;
-    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
     margin-bottom: var(--spacing-sm);
     padding-bottom: var(--spacing-sm);
     border-bottom: 1px solid var(--border-color);
@@ -593,6 +594,32 @@ th select {
 .card-title {
     font-weight: bold;
     color: var(--primary-color);
+    flex: 1;
+}
+
+.btn-add-to-asdp {
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 1px solid var(--primary-color);
+    background: transparent;
+    color: var(--primary-color);
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    opacity: 0.7;
+    transition: opacity 0.2s, background 0.2s;
+}
+
+.btn-add-to-asdp:hover {
+    opacity: 1;
+    background: var(--primary-color);
+    color: #000;
 }
 
 .status-open {
