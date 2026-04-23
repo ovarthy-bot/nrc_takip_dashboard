@@ -1,4 +1,13 @@
 // UI Module - Handles all DOM manipulation and rendering
+
+function debounce(fn, delay) {
+    let timer;
+    return (...args) => {
+        clearTimeout(timer);
+        timer = setTimeout(() => fn(...args), delay);
+    };
+}
+
 const UI = {
     elements: {
         tableHead: document.querySelector('#main-table thead'),
@@ -155,7 +164,8 @@ const UI = {
                     textarea.className = 'table-note-textarea';
                     textarea.value = cell || '';
                     textarea.placeholder = 'Not...';
-                    textarea.onchange = (e) => window.App.updateNote(row, e.target.value);
+                    const debouncedNoteUpdate = debounce((val) => window.App.updateNote(row, val), 300);
+                    textarea.oninput = (e) => debouncedNoteUpdate(e.target.value);
 
                     const deleteBtn = document.createElement('button');
                     deleteBtn.className = 'btn-delete-note';
@@ -326,7 +336,8 @@ const UI = {
             const noteIndex = headers.indexOf('Not');
             if (noteIndex !== -1) {
                 noteInput.value = row[noteIndex] || '';
-                noteInput.onchange = (e) => window.App.updateNote(row, e.target.value);
+                const debouncedCardNoteUpdate = debounce((val) => window.App.updateNote(row, val), 300);
+                noteInput.oninput = (e) => debouncedCardNoteUpdate(e.target.value);
 
                 deleteNoteBtn.onclick = () => {
                     if (confirm('Notu silmek istediğinize emin misiniz?')) {
