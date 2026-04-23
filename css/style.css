@@ -622,6 +622,13 @@ th select {
     color: #000;
 }
 
+mark.search-highlight {
+    background-color: rgba(187, 134, 252, 0.25);
+    color: inherit;
+    border-radius: 2px;
+    padding: 0 1px;
+}
+
 .status-open {
     color: #cf6679;
     font-weight: 600;
