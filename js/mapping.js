@@ -281,7 +281,9 @@ const MappingApp = {
 
         this.showLoading(false);
         if (s1 && s2) {
-            alert('Tüm eşleştirme verileri başarıyla kaydedildi!');
+            // Navigate to main page as a fresh load so loadData() re-fetches
+            // the updated mappings from Firebase and applies them immediately.
+            window.location.href = './index.html';
         }
     },
 
