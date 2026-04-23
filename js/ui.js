@@ -8,6 +8,31 @@ function debounce(fn, delay) {
     };
 }
 
+function highlightText(container, text, query) {
+    const str = String(text ?? '');
+    if (!query || !str.toLowerCase().includes(query.toLowerCase())) {
+        container.textContent = str;
+        return;
+    }
+    const lowerStr = str.toLowerCase();
+    const lowerQuery = query.toLowerCase();
+    let lastIndex = 0;
+    let idx;
+    while ((idx = lowerStr.indexOf(lowerQuery, lastIndex)) !== -1) {
+        if (idx > lastIndex) {
+            container.appendChild(document.createTextNode(str.substring(lastIndex, idx)));
+        }
+        const mark = document.createElement('mark');
+        mark.className = 'search-highlight';
+        mark.textContent = str.substring(idx, idx + lowerQuery.length);
+        container.appendChild(mark);
+        lastIndex = idx + lowerQuery.length;
+    }
+    if (lastIndex < str.length) {
+        container.appendChild(document.createTextNode(str.substring(lastIndex)));
+    }
+}
+
 const UI = {
     elements: {
         tableHead: document.querySelector('#main-table thead'),
@@ -50,7 +75,7 @@ const UI = {
         }
     },
 
-    showData: function (headers, data, stats, lastImportTime, pagination) {
+    showData: function (headers, data, stats, lastImportTime, pagination, query = '') {
         if (!data || data.length === 0) {
             this.elements.dataContainer.classList.add('hidden');
             this.elements.emptyState.classList.remove('hidden');
@@ -71,8 +96,8 @@ const UI = {
         this.updatePagination(pagination);
 
         // Render table and cards
-        this.renderTable(headers, data);
-        this.renderCards(headers, data);
+        this.renderTable(headers, data, query);
+        this.renderCards(headers, data, query);
     },
 
     updateStats: function (stats, lastImportTime) {
@@ -102,7 +127,7 @@ const UI = {
     // Column names that should always render as tight (no-wrap, min-width)
     TIGHT_HEADER_NAMES: new Set(['estimated_mh', 'actual_mh', 'completed_on', 'status', 'Oran %', 'Uçak İsmi']),
 
-    renderTable: function (headers, data) {
+    renderTable: function (headers, data, query = '') {
         // Clear Headers
         this.elements.tableHead.innerHTML = '';
         const trHead = document.createElement('tr');
@@ -185,9 +210,9 @@ const UI = {
                     // Format numeric MH values to 2 decimal places
                     if ((headers[i] === 'estimated_mh' || headers[i] === 'actual_mh') && cell !== '' && cell !== null) {
                         const num = parseFloat(cell);
-                        td.textContent = isNaN(num) ? cell : num.toFixed(2);
+                        highlightText(td, isNaN(num) ? cell : num.toFixed(2), query);
                     } else {
-                        td.textContent = cell;
+                        highlightText(td, cell, query);
                     }
                     if (headers[i] === 'status') {
                         const statusClass = { OPEN: 'status-open', CLOSED: 'status-closed', DEFER: 'status-defer', CANCEL: 'status-cancel' }[String(cell).trim().toUpperCase()];
@@ -228,7 +253,7 @@ const UI = {
         });
     },
 
-    renderCards: function (headers, data) {
+    renderCards: function (headers, data, query = '') {
         this.elements.cardList.innerHTML = '';
         data.forEach(row => {
             const card = document.createElement('div');
@@ -240,7 +265,7 @@ const UI = {
             // Use Task Card as Title
             const title = document.createElement('div');
             title.className = 'card-title';
-            title.textContent = row[3] || row[2]; // Task Card or WO
+            highlightText(title, row[3] || row[2], query); // Task Card or WO
 
             const statusIdx = headers.indexOf('status');
             const statusVal = statusIdx !== -1 ? row[statusIdx] : '';
@@ -300,7 +325,7 @@ const UI = {
                     select.onchange = (e) => window.App.updateDepartment(row, e.target.value);
                     value.appendChild(select);
                 } else {
-                    value.textContent = row[i];
+                    highlightText(value, row[i], query);
                     if (h === 'status') {
                         const rowStatusClass = { OPEN: 'status-open', CLOSED: 'status-closed', DEFER: 'status-defer', CANCEL: 'status-cancel' }[String(row[i] || '').trim().toUpperCase()];
                         if (rowStatusClass) value.classList.add(rowStatusClass);
