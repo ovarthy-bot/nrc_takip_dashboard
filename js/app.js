@@ -746,7 +746,7 @@ const App = {
         const endIdx = startIdx + itemsPerPage;
         const pageData = this.state.filteredData.slice(startIdx, endIdx);
 
-        UI.showData(this.state.headers, pageData, this.state.stats, null, this.state.pagination);
+        UI.showData(this.state.headers, pageData, this.state.stats, null, this.state.pagination, this.state.filters.global);
     },
 
     deleteSelectedAircraftData: async function () {
