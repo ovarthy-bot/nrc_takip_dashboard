@@ -69,7 +69,7 @@ const Storage = {
             return true;
         } catch (e) {
             console.error('Error saving mapping to Firebase:', e);
-            alert('Eşleştirme verileri kaydedilirken hata oluştu: ' + e.message);
+            this.lastError = e;
             return false;
         }
     },
@@ -93,7 +93,8 @@ const Storage = {
             }
         } catch (e) {
             console.error('Error loading mapping from Firebase:', e);
-            return {};
+            this.lastError = e;
+            return { mapping: {}, excludedWOs: [] };
         }
     },
 
@@ -109,7 +110,7 @@ const Storage = {
             return true;
         } catch (e) {
             console.error('Error saving task card mapping to Firebase:', e);
-            alert('Task Card eşleştirme verileri kaydedilirken hata oluştu: ' + e.message);
+            this.lastError = e;
             return false;
         }
     },
@@ -129,6 +130,7 @@ const Storage = {
             }
         } catch (e) {
             console.error('Error loading task card mapping from Firebase:', e);
+            this.lastError = e;
             return {};
         }
     },

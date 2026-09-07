@@ -4,11 +4,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Uçak Eşleştirme - NRC Dashboard</title>
+    <title>Uçak & Task Card Eşleştirme - NRC Dashboard</title>
 
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
     <!-- SheetJS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
@@ -16,129 +18,246 @@
     <link rel="stylesheet" href="css/style.css">
 </head>
 
-<body>
+<body class="mapping-page">
 
-    <header>
-        <div class="header-content">
-            <h1>Uçak Eşleştirme</h1>
-            <div class="controls">
-                <a href="index.html" class="btn btn-secondary">
-                    <span class="icon">◀</span> Ana Sayfa
-                </a>
-                <button id="saveMapping" class="btn btn-primary">
-                    <span class="icon">💾</span> Kaydet
-                </button>
+    <header class="mapping-header">
+        <div class="header-container mapping-header-container">
+            <div class="header-main">
+                <div class="header-brand-group">
+                    <a href="index.html" class="btn btn-secondary btn-back" id="back-home-btn">
+                        <span class="icon">◀</span> <span class="back-text">Ana Sayfa</span>
+                    </a>
+                    <h1 class="header-title">Uçak & Task Card Eşleştirme</h1>
+                </div>
+
+                <div class="controls mapping-controls">
+                    <span id="save-status-badge" class="save-status-badge saved">✓ Kaydedildi</span>
+                    <button id="saveMapping" class="btn btn-primary btn-save">
+                        <span class="icon">💾</span> <span class="save-btn-text">Kaydet</span>
+                    </button>
+                </div>
             </div>
         </div>
     </header>
+
+    <!-- Toast / Notification container -->
+    <div id="toast-container" class="toast-container"></div>
 
     <main id="app">
         <div id="loading" class="hidden">Yükleniyor...</div>
 
         <div id="mapping-container" class="mapping-container">
             <div class="mapping-info">
-                <p>Eşleştirme verilerini buradan yönetebilirsiniz. Bu veriler ana sayfada otomatik olarak görünecektir.
-                </p>
+                <p>Eşleştirme verilerini buradan yönetebilirsiniz. Yapılan değişiklikler ana sayfadaki filtre ve tablolara otomatik yansır. İşlemlerinizin kalıcı olması için <strong>"Kaydet"</strong> butonuna basmayı unutmayın.</p>
             </div>
 
             <div class="mapping-grid">
                 <!-- Section 1: Aircraft Mapping -->
-                <div class="manual-entry-section">
+                <section class="manual-entry-section">
                     <div class="section-header">
-                        <h3>1. Uçak Eşleştirme (WO -> Uçak İsmi)</h3>
-                    </div>
-
-                    <div class="bulk-actions-wrapper">
-                        <div class="bulk-actions">
-                            <div class="bulk-header">
-                                <span class="bulk-label">Uçak Bazlı Toplu Sil:</span>
-                                <label for="aircraftExcelInput" class="btn btn-primary btn-sm">
-                                    <span class="icon">📂</span> Excel İçe Aktar
-                                </label>
-                                <input type="file" id="aircraftExcelInput" accept=".xlsx,.xls" hidden>
-                            </div>
-                            <div class="bulk-controls">
-                                <select id="bulk-aircraft-delete" class="filter-select">
-                                    <option value="">Uçak Seçin</option>
-                                </select>
-                                <button id="bulk-delete-btn" class="btn btn-danger btn-sm">Toplu Sil</button>
-                                <button id="delete-all-aircraft-btn" class="btn btn-danger btn-sm">Tüm Verileri
-                                    Sil</button>
-                            </div>
+                        <div class="section-title-wrap">
+                            <h3>1. Uçak Eşleştirme (WO ➔ Uçak İsmi)</h3>
+                            <span id="aircraft-count-badge" class="badge">0 kayıt</span>
+                        </div>
+                        <div class="section-header-actions">
+                            <label for="aircraftExcelInput" class="btn btn-primary btn-sm btn-excel">
+                                <span class="icon">📂</span> Excel'den İçe Aktar
+                            </label>
+                            <input type="file" id="aircraftExcelInput" accept=".xlsx,.xls" hidden>
                         </div>
                     </div>
 
-                    <div class="entry-form">
-                        <input type="text" id="new-wo" placeholder="WO Numarası">
-                        <input type="text" id="new-aircraft" placeholder="Uçak İsmi">
-                        <button id="add-entry-btn" class="btn btn-secondary">Ekle</button>
+                    <!-- Yeni Eşleştirme Formu -->
+                    <div class="entry-card">
+                        <div class="entry-card-title">Yeni Eşleştirme</div>
+                        <div class="entry-form" id="aircraft-entry-form">
+                            <input type="text" id="new-wo" placeholder="WO Numarası (Örn: 123456)" autocomplete="off">
+                            <input type="text" id="new-aircraft" placeholder="Uçak İsmi (Örn: TC-JSL)" autocomplete="off">
+                            <button id="add-entry-btn" class="btn btn-secondary">Ekle</button>
+                        </div>
                     </div>
 
-                    <div class="table-container">
+                    <!-- Yönetim İşlemleri (Destructive / Bulk) -->
+                    <details class="management-details">
+                        <summary class="management-summary">
+                            <span class="icon">⚙️</span> Yönetim İşlemleri (Toplu Silme)
+                        </summary>
+                        <div class="management-content">
+                            <div class="bulk-group">
+                                <label for="bulk-aircraft-delete" class="bulk-label">Uçak Bazlı Toplu Sil:</label>
+                                <div class="bulk-controls">
+                                    <select id="bulk-aircraft-delete" class="filter-select">
+                                        <option value="">Uçak Seçin</option>
+                                    </select>
+                                    <button id="bulk-delete-btn" class="btn btn-danger btn-sm">Seçili Uçağın WO'larını Sil</button>
+                                </div>
+                            </div>
+                            <div class="danger-group">
+                                <button id="delete-all-aircraft-btn" class="btn btn-danger btn-sm btn-full">
+                                    Tüm Eşleştirmeleri Sil
+                                </button>
+                            </div>
+                        </div>
+                    </details>
+
+                    <!-- Desktop Table View -->
+                    <div class="table-container desktop-only">
                         <div class="table-wrapper">
                             <table id="mapping-table">
                                 <thead>
                                     <tr>
-                                        <th style="width: 30%;">WO</th>
-                                        <th style="width: 55%;">Uçak İsmi</th>
-                                        <th style="width: 15%;">İşlem</th>
+                                        <th style="width: 35%;">WO Numarası</th>
+                                        <th style="width: 50%;">Uçak İsmi</th>
+                                        <th style="width: 15%; text-align: center;">İşlem</th>
                                     </tr>
                                 </thead>
                                 <tbody id="mapping-tbody">
-                                    <!-- Rows will be injected here -->
+                                    <!-- Dynamic rows -->
                                 </tbody>
                             </table>
+                            <div id="aircraft-table-empty" class="empty-state hidden">Eşleştirme kaydı bulunmuyor.</div>
                         </div>
                     </div>
-                </div>
+
+                    <!-- Mobile Card View -->
+                    <div id="mapping-mobile-list" class="mapping-card-list mobile-only">
+                        <!-- Dynamic cards -->
+                    </div>
+                </section>
 
                 <!-- Section 2: Task Card Mapping -->
-                <div class="manual-entry-section">
+                <section class="manual-entry-section">
                     <div class="section-header">
-                        <h3>2. Task Card Eşleştirme (TC -> Bölüm)</h3>
-                        <label for="tcExcelInput" class="btn btn-primary btn-sm">
-                            <span class="icon">📂</span> Excel İçe Aktar
-                        </label>
-                        <input type="file" id="tcExcelInput" accept=".xlsx,.xls" hidden>
-                        <button id="delete-all-tc-btn" class="btn btn-danger btn-sm">Tüm Verileri Sil</button>
+                        <div class="section-title-wrap">
+                            <h3>2. Task Card Eşleştirme (TC ➔ Bölüm)</h3>
+                            <span id="tc-count-badge" class="badge">0 kayıt</span>
+                        </div>
+                        <div class="section-header-actions">
+                            <label for="tcExcelInput" class="btn btn-primary btn-sm btn-excel">
+                                <span class="icon">📂</span> Excel'den İçe Aktar
+                            </label>
+                            <input type="file" id="tcExcelInput" accept=".xlsx,.xls" hidden>
+                        </div>
                     </div>
 
-                    <div class="entry-form">
-                        <input type="text" id="new-tc" placeholder="Task Card No">
-                        <select id="new-dept" class="filter-select">
-                            <option value="">Bölüm Seçin</option>
-                            <option value="Cabin">Cabin</option>
-                            <option value="Ortak Cabin">Ortak Cabin</option>
-                            <option value="TEKSTIL">TEKSTIL</option>
-                            <option value="AVI">AVI</option>
-                            <option value="MEC">MEC</option>
-                            <option value="STR">STR</option>
-                            <option value="SEAT">SEAT</option>
-                            <option value="KAPLAMA">KAPLAMA</option>
-                        </select>
-                        <button id="add-tc-entry-btn" class="btn btn-secondary">Ekle</button>
+                    <!-- Yeni Task Card Eşleştirme Formu -->
+                    <div class="entry-card">
+                        <div class="entry-card-title">Yeni Task Card Eşleştirme</div>
+                        <div class="entry-form" id="tc-entry-form">
+                            <input type="text" id="new-tc" placeholder="Task Card No (Örn: NRC-12345)" autocomplete="off">
+                            <select id="new-dept" class="filter-select">
+                                <option value="">Bölüm Seçin</option>
+                                <option value="Cabin">Cabin</option>
+                                <option value="Ortak Cabin">Ortak Cabin</option>
+                                <option value="TEKSTIL">TEKSTIL</option>
+                                <option value="AVI">AVI</option>
+                                <option value="MEC">MEC</option>
+                                <option value="STR">STR</option>
+                                <option value="SEAT">SEAT</option>
+                                <option value="KAPLAMA">KAPLAMA</option>
+                            </select>
+                            <button id="add-tc-entry-btn" class="btn btn-secondary">Ekle</button>
+                        </div>
                     </div>
 
-                    <div class="table-container">
+                    <!-- Task Card Yönetim İşlemleri -->
+                    <details class="management-details">
+                        <summary class="management-summary">
+                            <span class="icon">⚙️</span> Yönetim İşlemleri (Toplu Silme)
+                        </summary>
+                        <div class="management-content">
+                            <div class="danger-group">
+                                <button id="delete-all-tc-btn" class="btn btn-danger btn-sm btn-full">
+                                    Tüm Task Card Verilerini Sil
+                                </button>
+                            </div>
+                        </div>
+                    </details>
+
+                    <!-- Desktop Table View -->
+                    <div class="table-container desktop-only">
                         <div class="table-wrapper">
                             <table id="tc-mapping-table">
                                 <thead>
                                     <tr>
-                                        <th style="width: 40%;">Task Card</th>
+                                        <th style="width: 40%;">Task Card No</th>
                                         <th style="width: 45%;">Bölüm</th>
-                                        <th style="width: 15%;">İşlem</th>
+                                        <th style="width: 15%; text-align: center;">İşlem</th>
                                     </tr>
                                 </thead>
                                 <tbody id="tc-mapping-tbody">
-                                    <!-- Rows will be injected here -->
+                                    <!-- Dynamic rows -->
                                 </tbody>
                             </table>
+                            <div id="tc-table-empty" class="empty-state hidden">Task Card eşleştirme kaydı bulunmuyor.</div>
                         </div>
                     </div>
-                </div>
+
+                    <!-- Mobile Card View -->
+                    <div id="tc-mobile-list" class="mapping-card-list mobile-only">
+                        <!-- Dynamic cards -->
+                    </div>
+                </section>
             </div>
         </div>
     </main>
+
+    <!-- Excel Import Result Modal -->
+    <div id="import-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="import-modal-title">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3 id="import-modal-title">İÇE AKTARMA TAMAMLANDI</h3>
+                <button id="close-import-modal-btn" class="modal-close-btn" aria-label="Kapat">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="stat-summary-grid">
+                    <div class="stat-summary-box">
+                        <span class="stat-summary-label">Toplam Satır</span>
+                        <span id="import-stat-total" class="stat-summary-value">0</span>
+                    </div>
+                    <div class="stat-summary-box stat-new">
+                        <span class="stat-summary-label">Yeni Kayıt</span>
+                        <span id="import-stat-new" class="stat-summary-value">0</span>
+                    </div>
+                    <div class="stat-summary-box stat-updated">
+                        <span class="stat-summary-label">Güncellenen</span>
+                        <span id="import-stat-updated" class="stat-summary-value">0</span>
+                    </div>
+                    <div class="stat-summary-box stat-skipped">
+                        <span class="stat-summary-label">Atlanan</span>
+                        <span id="import-stat-skipped" class="stat-summary-value">0</span>
+                    </div>
+                    <div class="stat-summary-box stat-error">
+                        <span class="stat-summary-label">Hatalı Kayıt</span>
+                        <span id="import-stat-errors" class="stat-summary-value">0</span>
+                    </div>
+                </div>
+
+                <div id="import-error-section" class="import-error-section hidden">
+                    <h4>Hatalı / Eksik Satırlar:</h4>
+                    <div class="error-list-scroll">
+                        <table class="error-table">
+                            <thead>
+                                <tr>
+                                    <th>Satır</th>
+                                    <th>WO / Bilgi</th>
+                                    <th>Açıklama</th>
+                                </tr>
+                            </thead>
+                            <tbody id="import-error-tbody">
+                                <!-- Error rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <p class="modal-reminder-text">ℹ️ İçe aktarılan verilerin kalıcı olması için <strong>"Kaydet"</strong> butonuna basmayı unutmayın.</p>
+            </div>
+            <div class="modal-footer">
+                <button id="confirm-import-modal-btn" class="btn btn-primary">Tamam</button>
+            </div>
+        </div>
+    </div>
 
     <!-- Custom JS (ES6 Modules for Firebase) -->
     <script type="module" src="js/firebase-config.js"></script>

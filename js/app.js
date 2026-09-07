@@ -245,7 +245,7 @@ const App = {
         // Apply aircraft names based on WO number
         // WO is at index 2 (after Aircraft Name and Department columns)
         this.state.allData.forEach(row => {
-            const wo = row[2]; // WO column
+            const wo = row[2] ? String(row[2]).trim() : ''; // WO column
             if (wo && this.state.aircraftMapping[wo]) {
                 row[0] = this.state.aircraftMapping[wo]; // Set Aircraft Name
             }
