@@ -246,9 +246,7 @@ const App = {
         // WO is at index 2 (after Aircraft Name and Department columns)
         this.state.allData.forEach(row => {
             const wo = row[2] ? String(row[2]).trim() : ''; // WO column
-            if (wo && this.state.aircraftMapping[wo]) {
-                row[0] = this.state.aircraftMapping[wo]; // Set Aircraft Name
-            }
+            row[0] = (wo && this.state.aircraftMapping[wo]) ? this.state.aircraftMapping[wo] : '';
         });
     },
 
@@ -256,12 +254,10 @@ const App = {
         // Apply departments based on Task Card number
         // Task Card is at index 3
         this.state.allData.forEach(row => {
-            const tc = row[3]; // Task Card column
+            const tc = row[3] ? String(row[3]).trim() : ''; // Task Card column
             // Skip rows already marked as "Cabin" by sicil-based detection
             if (row[1] === "Cabin") return;
-            if (tc && this.state.taskCardMapping[tc]) {
-                row[1] = this.state.taskCardMapping[tc]; // Set Department
-            }
+            row[1] = (tc && this.state.taskCardMapping[tc]) ? this.state.taskCardMapping[tc] : '';
         });
     },
 
@@ -686,13 +682,25 @@ const App = {
         const select = document.getElementById('aircraft-filter');
         const unique = [...new Set(this.state.allData.map(row => row[0]))].filter(v => v).sort();
 
+        const currentVal = this.state.filters.aircraft;
         select.innerHTML = '<option value="">Uçak Tümü</option>';
         unique.forEach(aircraft => {
             const opt = document.createElement('option');
             opt.value = aircraft;
             opt.textContent = aircraft;
+            if (aircraft === currentVal) opt.selected = true;
             select.appendChild(opt);
         });
+
+        if (currentVal && !unique.includes(currentVal)) {
+            this.state.filters.aircraft = '';
+            select.value = '';
+            const delBtn = document.getElementById('delete-aircraft-data-btn');
+            const clearAllBtn = document.getElementById('clear-all-data-btn');
+            if (delBtn) delBtn.classList.add('hidden');
+            if (clearAllBtn) clearAllBtn.classList.remove('hidden');
+            this.updateAircraftTimestamp('');
+        }
 
         // Other filters
         this.populateExtraFilters();
