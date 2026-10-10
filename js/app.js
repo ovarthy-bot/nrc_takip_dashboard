@@ -208,6 +208,18 @@ const App = {
                 await this.saveData();
                 console.log("Data migrated: Added 'Bölüm' column.");
             }
+
+            // Ensure Sicil No column exists (inserted right after "Oran %")
+            if (!this.state.headers.includes("Sicil No")) {
+                const oranIdx = this.state.headers.indexOf("Oran %");
+                const insertIdx = oranIdx !== -1 ? oranIdx + 1 : this.state.headers.length - 1;
+                this.state.headers.splice(insertIdx, 0, "Sicil No");
+                this.state.allData.forEach(row => {
+                    row.splice(insertIdx, 0, "");
+                });
+                await this.saveData();
+                console.log("Data migrated: Added 'Sicil No' column.");
+            }
         }
 
         // Load aircraft mapping
@@ -328,6 +340,7 @@ const App = {
         let headers = ["Uçak İsmi", "Bölüm"]; // First two columns
         headers = headers.concat(columns.map(i => headerRow[i] || ""));
         headers.push("Oran %");
+        headers.push("Sicil No");
         headers.push("Not");
 
         // Index Existing Data for Merging
@@ -389,6 +402,9 @@ const App = {
                 const isNRCRow = String(tc).toUpperCase().startsWith("NRC");
                 const isKabin = isNRCRow && !isNaN(kolonKSayi) && this.KABIN_SICILLER.has(kolonKSayi);
                 const department = isKabin ? "Cabin" : (this.state.taskCardMapping[tc] || "");
+
+                // Sicil No (Excel column K / "created_by") — displayed as its own column
+                mappedRow.push(kolonK === undefined || kolonK === null ? "" : kolonK);
 
                 // Record this WO -> aircraft mapping for per-aircraft timestamp assignment
                 if (wo) {

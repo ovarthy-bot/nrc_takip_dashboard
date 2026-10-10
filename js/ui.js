@@ -125,7 +125,7 @@ const UI = {
     },
 
     // Column names that should always render as tight (no-wrap, min-width)
-    TIGHT_HEADER_NAMES: new Set(['estimated_mh', 'actual_mh', 'completed_on', 'status', 'Oran %', 'Uçak İsmi']),
+    TIGHT_HEADER_NAMES: new Set(['estimated_mh', 'actual_mh', 'completed_on', 'status', 'Oran %', 'Uçak İsmi', 'Sicil No']),
 
     renderTable: function (headers, data, query = '') {
         // Clear Headers
