@@ -532,6 +532,22 @@ const App = {
 
     updateDepartment: async function (row, department) {
         row[1] = department; // Department is at index 1
+
+        // Auto-register this choice as a Task Card -> Department mapping so it
+        // survives reloads (applyTaskCardMapping otherwise re-derives every row's
+        // department from the mapping and would wipe an unregistered manual pick)
+        // and applies to every other row sharing the same Task Card.
+        const tc = row[3] ? String(row[3]).trim() : '';
+        if (tc) {
+            if (department) {
+                this.state.taskCardMapping[tc] = department;
+            } else {
+                delete this.state.taskCardMapping[tc];
+            }
+            await Storage.saveTaskCardMapping(this.state.taskCardMapping);
+            this.applyTaskCardMapping(); // Propagate to all rows sharing this Task Card
+        }
+
         await this.saveData();
         this.applyFilters(); // Re-apply filters
     },
