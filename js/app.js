@@ -38,6 +38,8 @@ const App = {
         aircraftImportTimes: {} // aircraftName -> ISO timestamp
     },
 
+    AIRCRAFT_FILTER_STORAGE_KEY: 'nrc_dashboard_selected_aircraft',
+
     init: async function () {
         console.log('App initialized');
         this.bindEvents();
@@ -83,6 +85,14 @@ const App = {
         document.getElementById('aircraft-filter').addEventListener('change', (e) => {
             const val = e.target.value;
             this.filterData('aircraft', val);
+            // Remember the selected aircraft so it's restored on next visit
+            try {
+                if (val) {
+                    localStorage.setItem(this.AIRCRAFT_FILTER_STORAGE_KEY, val);
+                } else {
+                    localStorage.removeItem(this.AIRCRAFT_FILTER_STORAGE_KEY);
+                }
+            } catch (err) { /* localStorage unavailable */ }
             // Toggle delete buttons
             const delBtn = document.getElementById('delete-aircraft-data-btn');
             const clearAllBtn = document.getElementById('clear-all-data-btn');
@@ -239,10 +249,25 @@ const App = {
             this.state.aircraftImportTimes = metadata.aircraftImportTimes || {};
         }
 
+        // Restore last selected aircraft filter from localStorage
+        try {
+            const savedAircraft = localStorage.getItem(this.AIRCRAFT_FILTER_STORAGE_KEY);
+            if (savedAircraft) this.state.filters.aircraft = savedAircraft;
+        } catch (err) { /* localStorage unavailable */ }
+
         this.state.filteredData = this.state.allData;
-        this.populateAircraftFilter(); // Populate dropdowns
-        this.calculateStats();
-        this.render();
+        this.populateAircraftFilter(); // Populate dropdowns (clears stale saved value if aircraft no longer exists)
+
+        if (this.state.filters.aircraft) {
+            // Reflect the restored aircraft filter in the UI controls
+            document.getElementById('delete-aircraft-data-btn').classList.remove('hidden');
+            document.getElementById('clear-all-data-btn').classList.add('hidden');
+            this.updateAircraftTimestamp(this.state.filters.aircraft);
+            this.applyFilters(); // Also updates stats + renders
+        } else {
+            this.calculateStats();
+            this.render();
+        }
         UI.toggleLoading(false);
     },
 
@@ -804,6 +829,7 @@ const App = {
         document.getElementById('delete-aircraft-data-btn').classList.add('hidden');
         document.getElementById('clear-all-data-btn').classList.remove('hidden');
         this.updateAircraftTimestamp('');
+        try { localStorage.removeItem(this.AIRCRAFT_FILTER_STORAGE_KEY); } catch (err) { /* localStorage unavailable */ }
 
         // Refresh UI
         this.populateAircraftFilter();
@@ -844,11 +870,13 @@ const App = {
         this.state.filteredData = [];
         this.state.lastImportTime = null;
         this.state.aircraftImportTimes = {};
+        this.state.filters.aircraft = '';
         // Hide aircraft timestamp
         const tsEl = document.getElementById('aircraft-import-time');
         if (tsEl) { tsEl.textContent = ''; tsEl.classList.add('hidden'); }
         // Hide delete aircraft button
         document.getElementById('delete-aircraft-data-btn').classList.add('hidden');
+        try { localStorage.removeItem(this.AIRCRAFT_FILTER_STORAGE_KEY); } catch (err) { /* localStorage unavailable */ }
 
         // Save empty state to Firebase
         await this.saveData();
