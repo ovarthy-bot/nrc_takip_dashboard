@@ -17,7 +17,7 @@ const MappingApp = {
         isSaving: false
     },
 
-    validDepartments: ["Cabin", "Ortak Cabin", "TEKSTIL", "AVI", "MEC", "STR", "SEAT", "KAPLAMA"],
+    validDepartments: ["Cabin", "R1 Cabin", "R2 Cabin", "Ortak Cabin", "TEKSTIL", "AVI", "MEC", "STR", "SEAT", "KAPLAMA"],
 
     init: async function () {
         console.log('Mapping App initialized');
