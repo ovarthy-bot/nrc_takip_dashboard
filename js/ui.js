@@ -8,6 +8,63 @@ function debounce(fn, delay) {
     };
 }
 
+async function copyToClipboard(text, btnEl) {
+    let success = false;
+
+    try {
+        if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(text);
+            success = true;
+        }
+    } catch (err) {
+        console.error('Clipboard API başarısız, alternatif yönteme geçiliyor:', err);
+    }
+
+    if (!success) {
+        // Fallback for non-secure contexts, older browsers, or denied Clipboard API permission
+        try {
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.focus();
+            textarea.select();
+            success = document.execCommand('copy');
+            document.body.removeChild(textarea);
+        } catch (err) {
+            console.error('Kopyalama başarısız:', err);
+        }
+    }
+
+    if (btnEl) {
+        const original = btnEl.textContent;
+        btnEl.textContent = success ? '✅' : '⚠️';
+        btnEl.classList.toggle('copied', success);
+        setTimeout(() => {
+            btnEl.textContent = original;
+            btnEl.classList.remove('copied');
+        }, success ? 1000 : 1500);
+    }
+}
+
+function createCopyButton(text) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'btn-copy-tc';
+    btn.title = 'Task Card numarasını kopyala';
+    btn.textContent = '📋';
+    btn.onclick = (e) => {
+        e.stopPropagation();
+        copyToClipboard(text, btn);
+    };
+    return btn;
+}
+
+function isNRCTaskCard(value) {
+    return !!value && String(value).trim().toUpperCase().startsWith('NRC');
+}
+
 function highlightText(container, text, query) {
     const str = String(text ?? '');
     if (!query || !str.toLowerCase().includes(query.toLowerCase())) {
@@ -206,6 +263,16 @@ const UI = {
                     noteWrapper.appendChild(textarea);
                     noteWrapper.appendChild(deleteBtn);
                     td.appendChild(noteWrapper);
+                } else if (i === 3 && isNRCTaskCard(cell)) {
+                    const tcWrapper = document.createElement('div');
+                    tcWrapper.className = 'tc-cell-wrapper';
+
+                    const tcText = document.createElement('span');
+                    highlightText(tcText, cell, query);
+
+                    tcWrapper.appendChild(tcText);
+                    tcWrapper.appendChild(createCopyButton(String(cell)));
+                    td.appendChild(tcWrapper);
                 } else {
                     // Format numeric MH values to 2 decimal places
                     if ((headers[i] === 'estimated_mh' || headers[i] === 'actual_mh') && cell !== '' && cell !== null) {
@@ -267,6 +334,11 @@ const UI = {
             title.className = 'card-title';
             highlightText(title, row[3] || row[2], query); // Task Card or WO
 
+            let titleCopyBtn = null;
+            if (isNRCTaskCard(row[3])) {
+                titleCopyBtn = createCopyButton(String(row[3]));
+            }
+
             const statusIdx = headers.indexOf('status');
             const statusVal = statusIdx !== -1 ? row[statusIdx] : '';
             const status = document.createElement('div');
@@ -291,6 +363,7 @@ const UI = {
             };
 
             cardHeader.appendChild(title);
+            if (titleCopyBtn) cardHeader.appendChild(titleCopyBtn);
             cardHeader.appendChild(addBtn);
             cardHeader.appendChild(status);
             card.appendChild(cardHeader);

@@ -622,6 +622,33 @@ th select {
     color: #000;
 }
 
+/* NRC Task Card copy button (desktop table + mobile card title) */
+.tc-cell-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.btn-copy-tc {
+    flex-shrink: 0;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 0.95rem;
+    line-height: 1;
+    padding: 0;
+    opacity: 0.6;
+    transition: opacity 0.2s;
+}
+
+.btn-copy-tc:hover {
+    opacity: 1;
+}
+
+.btn-copy-tc.copied {
+    opacity: 1;
+}
+
 mark.search-highlight {
     background-color: rgba(187, 134, 252, 0.25);
     color: inherit;
