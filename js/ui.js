@@ -61,10 +61,6 @@ function createCopyButton(text) {
     return btn;
 }
 
-function isNRCTaskCard(value) {
-    return !!value && String(value).trim().toUpperCase().startsWith('NRC');
-}
-
 function highlightText(container, text, query) {
     const str = String(text ?? '');
     if (!query || !str.toLowerCase().includes(query.toLowerCase())) {
@@ -263,7 +259,7 @@ const UI = {
                     noteWrapper.appendChild(textarea);
                     noteWrapper.appendChild(deleteBtn);
                     td.appendChild(noteWrapper);
-                } else if (i === 3 && isNRCTaskCard(cell)) {
+                } else if (i === 3 && cell) {
                     const tcWrapper = document.createElement('div');
                     tcWrapper.className = 'tc-cell-wrapper';
 
@@ -335,7 +331,7 @@ const UI = {
             highlightText(title, row[3] || row[2], query); // Task Card or WO
 
             let titleCopyBtn = null;
-            if (isNRCTaskCard(row[3])) {
+            if (row[3]) {
                 titleCopyBtn = createCopyButton(String(row[3]));
             }
 
