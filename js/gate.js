@@ -3,7 +3,6 @@
   var HASH = 'ee0a5555ea6bc4b1d794b496a3167fe3c3822ca214f04cfb6a776d2e0024c31d';
   var PORTAL = 'https://ovarthy-bot.github.io/navigasyon/';
   var STORE = 'nav_gate_v1';
-  var DAY = 7 * 24 * 60 * 60 * 1000;
 
   // Sayfa içeriğini doğrulama bitene kadar gizle
   var style = document.createElement('style');
@@ -30,6 +29,10 @@
   function readStore() {
     try { return JSON.parse(localStorage.getItem(STORE) || 'null'); } catch (e) { return null; }
   }
+  // Sunucu tarafı (ör. PDF) kontrolü için aynı bileti çerez olarak da yaz
+  function setCookie(k) {
+    try { document.cookie = 'nav_k=' + encodeURIComponent(k) + '; Path=/; Max-Age=34560000; SameSite=Strict' + (location.protocol === 'https:' ? '; Secure' : ''); } catch (e) {}
+  }
   function clearStore() { try { localStorage.removeItem(STORE); } catch (e) {} }
 
   var m = location.hash.match(/[#&]k=([^&]+)/);
@@ -38,16 +41,17 @@
     var k = decodeURIComponent(m[1]);
     check(k).then(function (ok) {
       if (!ok) return deny();
-      try { localStorage.setItem(STORE, JSON.stringify({ k: k, exp: Date.now() + DAY })); } catch (e) {}
+      try { localStorage.setItem(STORE, JSON.stringify({ k: k })); } catch (e) {}
+      setCookie(k);
       history.replaceState(null, '', location.pathname + location.search);
       reveal();
     });
   } else {
     // Daha önce girilmiş ve oturumu geçerli olan tarayıcı
     var s = readStore();
-    if (s && s.exp > Date.now()) {
+    if (s && s.k) {
       check(s.k).then(function (ok) {
-        if (ok) reveal(); else { clearStore(); deny(); }
+        if (ok) { setCookie(s.k); reveal(); } else { clearStore(); deny(); }
       });
     } else {
       clearStore();
