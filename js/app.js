@@ -294,6 +294,10 @@ const App = {
             const tc = row[3] ? String(row[3]).trim() : ''; // Task Card column
             // Skip rows already marked as "Cabin" by sicil-based detection
             if (row[1] === "Cabin") return;
+            // NRC task cards keep their department as a local, row-only value
+            // (see updateDepartment) and are never synced to the shared
+            // Task Card -> Department mapping, so don't overwrite them here.
+            if (tc.toUpperCase().startsWith("NRC")) return;
             row[1] = (tc && this.state.taskCardMapping[tc]) ? this.state.taskCardMapping[tc] : '';
         });
     },
@@ -534,8 +538,12 @@ const App = {
         // survives reloads (applyTaskCardMapping otherwise re-derives every row's
         // department from the mapping and would wipe an unregistered manual pick)
         // and applies to every other row sharing the same Task Card.
+        // NRC task cards are excluded: their department stays local to this row
+        // (saved via saveData below) and is never pushed into the shared mapping
+        // that the mapping page's "Task Card Eşleştirme" list reads from.
         const tc = row[3] ? String(row[3]).trim() : '';
-        if (tc) {
+        const isNRCRow = tc.toUpperCase().startsWith("NRC");
+        if (tc && !isNRCRow) {
             if (department) {
                 this.state.taskCardMapping[tc] = department;
             } else {
