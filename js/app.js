@@ -1,4 +1,4 @@
-// Main Application Logic with Firebase, Pagination, Debouncing, and Filters
+// Main Application Logic with Supabase, Pagination, Debouncing, and Filters
 import Storage from './storage.js';
 import UI from './ui.js';
 
@@ -506,7 +506,7 @@ const App = {
             });
         }
 
-        // Save to Firebase
+        // Save to Supabase
         await this.saveData();
         await Storage.saveMetadata({
             importTime: this.state.lastImportTime,
@@ -837,7 +837,7 @@ const App = {
         // Remove per-aircraft timestamp
         delete this.state.aircraftImportTimes[aircraft];
 
-        // Save to Firebase
+        // Save to Supabase
         await this.saveData();
         await Storage.saveMetadata({
             importTime: this.state.lastImportTime,
@@ -899,7 +899,7 @@ const App = {
         document.getElementById('delete-aircraft-data-btn').classList.add('hidden');
         try { localStorage.removeItem(this.AIRCRAFT_FILTER_STORAGE_KEY); } catch (err) { /* localStorage unavailable */ }
 
-        // Save empty state to Firebase
+        // Save empty state to Supabase
         await this.saveData();
 
         // Refresh UI

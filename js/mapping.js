@@ -599,7 +599,7 @@ const MappingApp = {
         this.showLoading(true);
 
         try {
-            // 1. Load mappings from Firebase
+            // 1. Load mappings from Supabase
             const mappingRes = await Storage.loadMapping();
             this.state.mapping = {};
             if (mappingRes && mappingRes.mapping) {
@@ -683,7 +683,7 @@ const MappingApp = {
             console.error('Save failed:', err);
             this.state.isSaving = false;
             this.setDirty(true);
-            this.showToast('Veriler kaydedilemedi! İnternet bağlantınızı veya Firebase erişiminizi kontrol edin.', 'error');
+            this.showToast('Veriler kaydedilemedi! İnternet bağlantınızı veya Supabase erişiminizi kontrol edin.', 'error');
 
             if (saveBtn) {
                 saveBtn.disabled = false;
